@@ -32,5 +32,31 @@ def get_db():
 
 def init_db() -> None:
     from . import models  # noqa: F401  (registra os modelos em Base antes do create_all)
+    from sqlalchemy import inspect
+
+    insp = inspect(engine)
+    tabelas_existentes = set(insp.get_table_names())
 
     Base.metadata.create_all(bind=engine)
+
+    # create_all() só cria tabela que não existe — não adiciona coluna nova em
+    # tabela que já existia antes deste deploy. Como ainda não vale a pena ter
+    # Alembic pro tamanho do projeto, cobre esse caso com ALTER TABLE ADD COLUMN
+    # (só adiciona coluna faltando, nunca altera/remove nada existente).
+    _adicionar_colunas_faltando(tabelas_existentes)
+
+
+def _adicionar_colunas_faltando(tabelas_existentes: set[str]) -> None:
+    from sqlalchemy import inspect, text
+
+    insp = inspect(engine)
+    with engine.begin() as conn:
+        for table in Base.metadata.sorted_tables:
+            if table.name not in tabelas_existentes:
+                continue  # tabela nova: create_all() já criou com todas as colunas
+            colunas_atuais = {c["name"] for c in insp.get_columns(table.name)}
+            for col in table.columns:
+                if col.name in colunas_atuais:
+                    continue
+                tipo = col.type.compile(dialect=conn.dialect)
+                conn.execute(text(f'ALTER TABLE "{table.name}" ADD COLUMN "{col.name}" {tipo}'))
