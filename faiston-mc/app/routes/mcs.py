@@ -10,9 +10,8 @@ from .. import models
 from ..compat import mc_to_frontend
 from ..database import get_db
 from ..parser import MC, parse_mc
-from .auth import require_auth
 
-router = APIRouter(prefix="/api/mcs", tags=["mcs"], dependencies=[Depends(require_auth)])
+router = APIRouter(prefix="/api/mcs", tags=["mcs"])
 
 ALLOWED_EXT = {"xlsx", "xlsm", "xlsb"}
 MAX_FILE_BYTES = 30 * 1024 * 1024  # 30 MB

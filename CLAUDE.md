@@ -4,11 +4,16 @@ Painel de Margem de Contribuição. Lê as planilhas do modelo oficial de MC da 
 no backend e replica o `DASHBOARD_GERENCIAL_CONTRATOS`, com drill-down por
 categoria de custo.
 
-**Estado atual:** backend FastAPI + Postgres em `faiston-mc/`, pronto pra subir no
-Railway. Front-end continua sendo o `Painel_MC_Faiston.html` original (agora em
-`faiston-mc/frontend/index.html`), só trocando `localStorage` por `fetch` na API e
-ganhando uma tela de login. Parsing das planilhas saiu do navegador e agora roda no
-servidor (`faiston-mc/app/parser.py`), compartilhado pela equipe toda.
+**Estado atual:** backend FastAPI + Postgres em `faiston-mc/`, no ar no Railway.
+Front-end continua sendo o `Painel_MC_Faiston.html` original (agora em
+`faiston-mc/frontend/index.html`), só trocando `localStorage` por `fetch` na API.
+Parsing das planilhas saiu do navegador e agora roda no servidor
+(`faiston-mc/app/parser.py`), compartilhado pela equipe toda.
+
+**Sem autenticação.** Não tem senha nem login — qualquer um com a URL do Railway
+acessa o painel e os dados de contrato/margem direto. Decisão explícita do Rafael em
+10/08/2026, revertendo a exigência de senha que existia antes (ver seção 4). Rever
+isso se o painel deixar de ser só interno.
 
 **Para quem:** Bruna (gestora de operações, dona do processo de MC). Rafael desenvolve.
 
@@ -149,13 +154,12 @@ faiston-mc/
     parser.py       # leitura das planilhas — porta validada do parser client-side
     caixinhas.py     # de-para linha → caixinha (classificar / soma_caixas)
     compat.py        # serializa o MC no MESMO formato de objeto que o front espera
-    models.py         # SQLAlchemy: MCRecord, MCLinha, Ingestao
-    database.py        # engine/session, cria as tabelas no startup
-    config.py            # lê APP_PASSWORD / SECRET_KEY / etc do ambiente
+    models.py         # SQLAlchemy: MCRecord, MCLinha, Ingestao, Cliente
+    database.py        # engine/session, cria/migra as tabelas no startup
     main.py                # FastAPI app, serve o index.html, healthcheck
     routes/
-      auth.py               # POST /api/login, /api/logout, GET /api/me
       mcs.py                 # upload/list/detail/delete/clear das MCs
+      clientes.py            # consolidado por cliente
   frontend/
     index.html                # o painel — mesmo HTML de sempre, só fetch em vez de localStorage
   requirements.txt
@@ -176,27 +180,22 @@ detalhe, o simulador) não precisou ser tocada. Só três coisas mudaram no fron
 1. `save()`/`load()` viraram `loadMCs()` — `fetch('/api/mcs')` em vez de `localStorage`.
 2. `handleFiles()` não lê mais o xlsx no navegador — manda os arquivos crus pro
    `POST /api/mcs/upload` via `FormData` e recarrega a lista.
-3. Ganhou uma tela de login (`#loginScreen`) na frente de tudo, gated por
-   `GET /api/me`.
 
 SheetJS (a lib que lia xlsx no navegador) saiu — não é mais necessário. Chart.js
 continua, é só pra desenhar os gráficos.
 
-### Autenticação
+### Sem autenticação
 
-Senha única (`APP_PASSWORD`), compartilhada pela equipe. `POST /api/login` valida e
-seta um cookie assinado (`itsdangerous`, `httpOnly`, `SameSite=Lax`, `Secure` em
-produção) — não guarda sessão no banco, só o cookie assinado com `SECRET_KEY`. Toda
-rota de `/api/mcs/*` exige esse cookie.
+O painel não pede senha — qualquer um com a URL acessa tudo, upload incluso. Rotas
+`/api/login`, `/api/logout`, `/api/me` e o cookie assinado existiram numa versão
+anterior e foram removidos a pedido do Rafael (10/08/2026). Ver seção 4 sobre
+reabrir isso se o painel deixar de ser só uso interno da equipe.
 
 ### Rotas
 
 ```
 GET  /healthz              healthcheck do Railway
 GET  /                     serve o painel (index.html)
-POST /api/login            {senha} → seta cookie
-POST /api/logout           limpa cookie
-GET  /api/me                200 se autenticado, 401 se não
 POST /api/mcs/upload        multipart (files[]) → parse no servidor → upsert → {ok:[ids], erros:[...]}
 GET  /api/mcs                lista todas as MCs (formato compatível com o front)
 GET  /api/mcs/{id}            detalhe de uma MC
@@ -234,14 +233,9 @@ Alembic por enquanto, é cedo pro projeto pra valer a complexidade de migrations
 1. Criar um projeto no Railway, adicionar um plugin **Postgres**.
 2. Criar o serviço a partir deste repo, apontando o **root directory** pra
    `faiston-mc` (é onde estão o `Dockerfile` e o `railway.json`).
-3. Variáveis de ambiente do serviço:
+3. Variável de ambiente do serviço:
    - `DATABASE_URL` → referenciar o Postgres do Railway (`${{Postgres.DATABASE_URL}}`)
-   - `APP_PASSWORD` → a senha que a Bruna (e o resto da equipe) vai usar
-   - `SECRET_KEY` → uma string aleatória longa (`python3 -c "import secrets; print(secrets.token_hex(32))"`)
 4. Deploy. O healthcheck é `/healthz`.
-
-O app recusa subir (`RuntimeError` no startup) se `APP_PASSWORD` ou `SECRET_KEY` não
-estiverem setados — de propósito, pra nunca subir sem autenticação por engano.
 
 ---
 
@@ -258,14 +252,16 @@ estiverem setados — de propósito, pra nunca subir sem autenticação por enga
 - Parsing das planilhas roda no backend (Python), não mais no navegador — só o
   simulador (`calcDRE`/`lineCost`/`classificar` do JS) continua client-side, porque é
   cenário hipotético que não deveria bater no servidor a cada tecla
-- Senha única compartilhada pra começar — sem usuário/senha por pessoa ainda
+- **Sem autenticação** (revertido em 10/08/2026 — tinha senha única antes). Painel
+  público pra quem tiver a URL. Decisão explícita do Rafael, sabendo do risco pro
+  dado de margem/custo — não reabrir sem ele pedir
 
 ## 5. Ideias que ficaram de fora
 
 Comparar duas versões da mesma MC, histórico de margem por contrato ao longo do
 tempo, puxar as MCs direto do OneDrive usando o conector de MC que o Faiston Ops já
-tem, autenticação por pessoa (hoje é senha única), Alembic quando o schema começar a
-mudar de verdade.
+tem, autenticação (hoje não tem nenhuma — ver seção 4), Alembic quando o schema
+começar a mudar de verdade.
 
 ## 6. Como testar
 
@@ -275,21 +271,23 @@ Não tem framework de teste automatizado ainda. O que foi feito até aqui:
   8 abas relevantes, rodado `parse_mc()` direto e conferido: soma dos pilares bate
   com `custo`, `mcProjeto`/`mcDireta` batem com o cálculo manual, zero divergências
   entre linhas e DRE, e a invariante `soma das caixinhas == custo total` fecha exato.
-  Depois, subido o servidor local e exercitado o ciclo HTTP completo: login com senha
-  errada/certa, `/api/me` antes/depois, upload multipart (incluindo arquivo inválido,
-  que retorna erro claro em vez de 500), upsert do mesmo arquivo (não duplica),
-  detalhe, delete, clear e logout. `CONTRATO_RX` (extração do nº de contrato pelo
-  nome do arquivo) testada contra os nomes reais que a Bruna usa na pasta do
-  OneDrive (`F221082-6 - NTT - ...`, `C260020-2B - NAVEGACAO GUARITA`, etc). Tabela
-  `clientes` testada com 3 MCs sintéticas de 2 clientes: soma bate no upload, recalcula
-  certo no delete e zera no clear.
-- **O que falta:** rodar contra uma planilha real da Faiston e conferir os números de
-  referência da seção 1 (`MC F260153-2 NTT - Instalação.xlsx`) — isso só dá pra fazer
-  com o arquivo de verdade em mãos, que não estava disponível nesta sessão.
-- **Front-end:** ainda não testado num navegador de verdade contra o backend rodando
-  (precisa `npm`/servidor local + Postgres ou SQLite). Vale abrir o painel depois do
-  deploy e conferir visualmente: tela de login, upload arrastando um xlsx real,
-  as 4 abas macro, um drill-down, o detalhe de uma MC e o simulador.
+  Servidor local exercitado no ciclo HTTP completo: upload multipart (incluindo
+  arquivo inválido, que retorna erro claro em vez de 500), upsert do mesmo arquivo
+  (não duplica), detalhe, delete, clear, e as rotas sem exigir cookie/senha nenhuma.
+  `CONTRATO_RX` (extração do nº de contrato pelo nome do arquivo) testada contra os
+  nomes reais que a Bruna usa na pasta do OneDrive (`F221082-6 - NTT - ...`,
+  `C260020-2B - NAVEGACAO GUARITA`, etc). Tabela `clientes` testada com MCs
+  sintéticas de clientes diferentes: soma bate no upload, recalcula certo no delete
+  e zera no clear. `fmt_date`/`to_date` testados com célula de data que perdeu o
+  formato e virou número de série cru do Excel.
+- **Produção:** a Bruna já importou MCs reais no Railway. Bugs encontrados e
+  corrigidos nessa rodada: 500 em `/api/mcs` por coluna nova faltando no banco
+  (resolvido com migração leve no `database.py::init_db`), datas cruas no
+  início/fim, linha de total da aba Gerencial desalinhada da coluna fixa por causa
+  de `colspan`.
+- **O que falta:** conferir os números de referência da seção 1
+  (`MC F260153-2 NTT - Instalação.xlsx`) contra o parser — ainda não foi feito com
+  esse arquivo específico em mãos.
 
 Planilhas de referência: `MC F260153-2 NTT - Instalação.xlsx` e
 `DASHBOARD_GERENCIAL_CONTRATOS_07.08.2026.xlsm`.
@@ -302,7 +300,7 @@ Planilhas de referência: `MC F260153-2 NTT - Instalação.xlsx` e
 - Match de coluna é **exato primeiro, depois substring**: `TIPO` casaria com `TIPO DE CONTRATO`
 - O nome da aba varia entre planilhas; buscar por fragmento (`EQUIPE`, `SUPORTE`, `LOGISTICA`,
   `INVESTIMENTOS`, `DRE`), nunca por nome exato
-- Dado de margem e custo de contrato é sensível — por isso a autenticação por senha
-  antes de qualquer rota de dados, e o cookie é sempre `httpOnly`
+- Dado de margem e custo de contrato é sensível, e o painel **não tem autenticação**
+  (decisão explícita, seção 4) — não linkar a URL do Railway fora da equipe
 - Mudar `classificar()` num lado (`app/caixinhas.py` ou o JS do front) sem mudar no
   outro quebra a sincronia entre o que a ingestão grava e o que o simulador mostra

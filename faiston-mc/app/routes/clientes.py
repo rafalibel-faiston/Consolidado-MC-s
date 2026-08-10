@@ -5,9 +5,8 @@ from sqlalchemy.orm import Session
 
 from .. import models
 from ..database import get_db
-from .auth import require_auth
 
-router = APIRouter(prefix="/api/clientes", tags=["clientes"], dependencies=[Depends(require_auth)])
+router = APIRouter(prefix="/api/clientes", tags=["clientes"])
 
 
 @router.get("")
