@@ -769,8 +769,10 @@ function viewGerencial(rs){
       <td class="num mono">${pct(r.mcDiretaPct)}</td>
       <td>${r.alerta?'<span class="badge warn">revisar</span>':'<span class="badge ok">ok</span>'}</td>
     </tr>`).join('')}</tbody>
-    <tfoot><tr><td colspan="9">Total · ${ord.length} contrato${ord.length>1?'s':''}</td>
-      <td class="num mono">${money0(t.total)}</td><td colspan="3"></td>
+    <tfoot><tr><td class="mono">Total · ${ord.length} contrato${ord.length>1?'s':''}</td>
+      <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+      <td class="num mono">${money0(t.total)}</td>
+      <td></td><td></td><td></td>
       <td class="num mono">${money0(t.imp)}</td><td class="num mono">${money0(t.net)}</td>
       <td class="num mono">${money0(t.costs)}</td><td></td>
       ${CAIXAS.map(c=>`<td class="num mono ${t.caixas[c.k]?'':'zero'}">${t.caixas[c.k]?money0(t.caixas[c.k]):'—'}</td>`).join('')}

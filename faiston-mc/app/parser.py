@@ -48,9 +48,26 @@ def num(v: Any) -> float:
     return f if f == f else 0.0
 
 
+def _serial_to_date(v: Any) -> date | None:
+    """Célula de data calculada por fórmula (ex: EDATE) às vezes fica com formato
+    'Geral' na planilha — o openpyxl não reconhece como data e devolve o número
+    de série do Excel cru (dias desde 1899-12-30). Converte esse caso também."""
+    if not isinstance(v, (int, float)) or isinstance(v, bool):
+        return None
+    try:
+        from openpyxl.utils.datetime import from_excel
+        dt = from_excel(v)
+        return dt.date() if isinstance(dt, datetime) else dt
+    except Exception:
+        return None
+
+
 def fmt_date(v: Any) -> str:
     if isinstance(v, (datetime, date)):
         return v.strftime("%d/%m/%Y")
+    d = _serial_to_date(v)
+    if d:
+        return d.strftime("%d/%m/%Y")
     return str(v) if v is not None else ""
 
 
@@ -59,7 +76,7 @@ def to_date(v: Any) -> date | None:
         return v.date()
     if isinstance(v, date):
         return v
-    return None
+    return _serial_to_date(v)
 
 
 # ---------------------------------------------------------------- pilares
