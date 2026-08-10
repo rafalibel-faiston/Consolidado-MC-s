@@ -1,0 +1,1328 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MC · Faiston Ops</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Slab:wght@600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#f4f4f8; --panel:#fff; --side:#fff; --line:#ececf3; --line-2:#e2e2ec;
+  --tx:#1b1830; --tx-2:#4a4763; --mut:#8b8a9e; --mut-2:#a9a8ba;
+  --vio:#7c3aed; --vio-2:#a855f7; --vio-soft:#f3edff; --vio-line:#e4d8ff;
+  --mag:#d946ef; --cy:#22d3ee; --deep:#4c1d95;
+  --grad:linear-gradient(135deg,#7c3aed 0%,#a855f7 55%,#d946ef 100%);
+  --grad-side:linear-gradient(135deg,#6d28d9 0%,#8b5cf6 100%);
+  --ok:#10b981; --warn:#f59e0b; --logo-tx:#3A3A3A;
+  --shadow:0 1px 2px rgba(27,24,48,.05),0 4px 14px rgba(27,24,48,.05);
+  --shadow-lg:0 8px 30px rgba(124,58,237,.14);
+  --r:14px;
+}
+html[data-theme=dark]{
+  --bg:#12111c; --panel:#1a1827; --side:#171522; --line:#272437; --line-2:#302c44;
+  --tx:#f2f1f7; --tx-2:#c9c6dc; --mut:#8b88a3; --mut-2:#6d6a85;
+  --vio-soft:#241d3d; --vio-line:#3a2f60; --logo-tx:#fff;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 14px rgba(0,0,0,.25);
+  --shadow-lg:0 8px 30px rgba(0,0,0,.45);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{background:var(--bg);color:var(--tx);font-family:'Inter',system-ui,sans-serif;font-size:14px;-webkit-font-smoothing:antialiased}
+body{min-height:100vh}
+h1{font-size:23px;font-weight:700;letter-spacing:-.5px}
+h2{font-size:17px;font-weight:700;letter-spacing:-.3px}
+h3{font-size:14.5px;font-weight:600;letter-spacing:-.2px}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--line-2);border-radius:5px}
+.flogo path[fill]{fill:var(--logo-tx)}
+
+/* ================= HEADER ================= */
+.hdr{position:sticky;top:0;z-index:40;background:var(--panel);border-bottom:1px solid var(--line);
+  padding:0 28px;height:62px;display:flex;align-items:center;gap:16px}
+.hdr .flogo{width:104px;height:auto;flex-shrink:0}
+.hdr .ops{font-size:10px;font-weight:700;letter-spacing:1.3px;color:var(--vio);
+  background:var(--vio-soft);border:1px solid var(--vio-line);padding:3px 7px;border-radius:6px}
+.hdr .div{width:1px;height:24px;background:var(--line-2)}
+.hdr .pg{font-size:13.5px;font-weight:600;color:var(--tx-2);display:flex;align-items:center;gap:8px}
+.hdr .pg svg{width:16px;height:16px;color:var(--vio)}
+.hdr .acts{margin-left:auto;display:flex;align-items:center;gap:9px}
+
+/* ================= TOPBAR ================= */
+.wrap{max-width:1560px;margin:0 auto;display:flex;flex-direction:column}
+.top{background:var(--bg);padding:22px 28px 0;display:flex;align-items:flex-start;gap:18px;flex-wrap:wrap}
+.top .ttl h1{margin-bottom:3px}
+.top .ttl p{color:var(--mut);font-size:13px}
+.top .acts{margin-left:auto;display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.search{position:relative}
+.search input{width:210px;padding:9px 12px 9px 34px;border-radius:10px;border:1px solid var(--line-2);
+  background:var(--panel);color:var(--tx);font-family:inherit;font-size:13px;outline:none}
+.search input:focus{border-color:var(--vio);box-shadow:0 0 0 3px var(--vio-soft)}
+.search svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);width:15px;height:15px;color:var(--mut)}
+.icobtn{width:38px;height:38px;border-radius:10px;border:1px solid var(--line-2);background:var(--panel);
+  color:var(--tx-2);display:grid;place-items:center;cursor:pointer;transition:.15s}
+.icobtn:hover{border-color:var(--vio);color:var(--vio)}
+.icobtn svg{width:16px;height:16px}
+.btn{background:var(--grad);color:#fff;border:none;padding:10px 17px;border-radius:10px;font-family:inherit;
+  font-size:13.5px;font-weight:600;cursor:pointer;transition:.15s;display:inline-flex;align-items:center;gap:7px;
+  box-shadow:0 4px 14px rgba(124,58,237,.28);white-space:nowrap}
+.btn:hover{filter:brightness(1.07);transform:translateY(-1px)}
+.btn svg{width:15px;height:15px}
+.btn.ghost{background:var(--panel);color:var(--tx-2);border:1px solid var(--line-2);box-shadow:none;font-weight:500}
+.btn.ghost:hover{border-color:var(--vio);color:var(--vio);transform:none;filter:none}
+.btn.sm{padding:7px 13px;font-size:12.5px}
+.btn.danger{background:var(--panel);border:1px solid #fecdd3;color:#e11d48;box-shadow:none;font-weight:500}
+html[data-theme=dark] .btn.danger{border-color:#4a1d2b}
+
+main{padding:20px 28px 60px;flex:1}
+
+/* ================= CARDS ================= */
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow)}
+.card-h{padding:18px 20px 0}
+.card-h h3{margin-bottom:3px}
+.card-h p{color:var(--mut);font-size:12.5px}
+.card-b{padding:16px 20px 20px}
+.card-b.flush{padding:8px 6px 6px}
+
+/* KPI */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(196px,1fr));gap:14px;margin-bottom:20px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:17px 18px;
+  box-shadow:var(--shadow);position:relative;overflow:hidden}
+.kpi::after{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--grad);opacity:0}
+.kpi.hi::after{opacity:1}
+.kpi .r1{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px}
+.kpi .ic{width:36px;height:36px;border-radius:10px;background:var(--vio-soft);color:var(--vio);display:grid;place-items:center}
+.kpi .ic svg{width:17px;height:17px}
+.kpi.c2 .ic{background:#e0f7fb;color:#0891b2}
+.kpi.c3 .ic{background:#fdeafd;color:#c026d3}
+html[data-theme=dark] .kpi.c2 .ic{background:#12333a;color:#38d6ec}
+html[data-theme=dark] .kpi.c3 .ic{background:#3a1440;color:#e879f9}
+.pill{font-size:10.5px;font-weight:600;padding:4px 9px;border-radius:20px;background:var(--vio-soft);
+  color:var(--vio);white-space:nowrap;border:1px solid var(--vio-line)}
+.pill.g{background:#e7f8f1;color:#059669;border-color:#c7efdf}
+.pill.y{background:#fef4e2;color:#b45309;border-color:#fae4bd}
+.pill.n{background:var(--bg);color:var(--mut);border-color:var(--line-2)}
+html[data-theme=dark] .pill.g{background:#0d2f24;border-color:#174736}
+html[data-theme=dark] .pill.y{background:#3a2a0c;border-color:#54401a}
+.kpi .lbl{font-size:10.5px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--mut);margin-bottom:5px}
+.kpi .val{font-size:29px;font-weight:700;letter-spacing:-1.2px;line-height:1.05;font-family:'Inter'}
+.kpi .val u{text-decoration:none;font-size:15px;font-weight:600;color:var(--mut);margin-left:2px}
+.kpi .sub{font-size:11.5px;color:var(--mut);margin-top:6px}
+
+/* tabs */
+.tabbar{display:inline-flex;gap:3px;background:var(--panel);border:1px solid var(--line);
+  border-radius:12px;padding:4px;margin-bottom:20px;box-shadow:var(--shadow);flex-wrap:wrap}
+.tabbar .t{padding:8px 15px;border-radius:9px;font-size:13.5px;font-weight:500;color:var(--mut);
+  cursor:pointer;display:flex;align-items:center;gap:7px;transition:.15s;white-space:nowrap}
+.tabbar .t:hover{color:var(--tx)}
+.tabbar .t.on{background:var(--vio-soft);color:var(--vio);font-weight:600}
+.tabbar .t svg{width:14px;height:14px}
+
+
+/* ================= CAIXINHAS ================= */
+.cx-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(212px,1fr));gap:13px}
+.cx{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--c);border-radius:12px;
+  padding:15px;box-shadow:var(--shadow);cursor:pointer;transition:.16s;position:relative}
+.cx:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg);border-color:var(--c)}
+.cx.off{opacity:.45}
+.cx.nao{border-left-color:#94a3b8;border-style:dashed}
+.cx-t{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:8px}
+.cx-n{font-size:11.5px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:var(--mut);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cx-p{font-size:12.5px;font-weight:700;color:var(--c);flex-shrink:0}
+.cx-v{font-size:21px;font-weight:700;letter-spacing:-.8px;margin-bottom:9px}
+.cx-s{font-size:11px;color:var(--mut-2);margin-top:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cx:hover .cx-s{color:var(--c)}
+
+/* etiqueta de aba de origem */
+.aba{display:inline-block;padding:3px 9px;border-radius:7px;border:1px solid var(--line-2);
+  background:var(--bg);font-size:11px;font-weight:600;color:var(--tx-2);white-space:nowrap;font-variant-numeric:tabular-nums}
+
+/* tabela larga do gerencial */
+table.wide{font-size:12.5px;min-width:2400px}
+table.wide td,table.wide th{padding:9px 10px}
+/* ID nunca quebra e fica fixo na rolagem horizontal */
+td.mono{white-space:nowrap}
+table.wide th:first-child,table.wide td:first-child{white-space:nowrap;position:sticky;left:0;z-index:3;
+  background:var(--panel);box-shadow:1px 0 0 var(--line)}
+table.wide thead th:first-child{z-index:4;background:var(--panel)}
+table.wide tfoot td:first-child{background:var(--bg)}
+table.wide tbody tr.clickable:hover td:first-child{background:var(--vio-soft)}
+th.cx{cursor:pointer}
+th.cx:hover span{filter:brightness(1.2)}
+td.nao-map{background:rgba(148,163,184,.13);font-weight:600}
+
+/* seg control (mini tabs dentro do card) */
+.seg{display:inline-flex;background:var(--bg);border-radius:9px;padding:3px;gap:2px;flex-wrap:wrap}
+.seg .s{padding:6px 12px;border-radius:7px;font-size:12px;font-weight:500;color:var(--mut);cursor:pointer;white-space:nowrap}
+.seg .s.on{background:var(--vio);color:#fff;font-weight:600;box-shadow:0 2px 8px rgba(124,58,237,.3)}
+
+/* filtros */
+.filters{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-bottom:18px}
+select,input[type=text],input[type=number]{background:var(--panel);border:1px solid var(--line-2);color:var(--tx);
+  padding:9px 12px;border-radius:10px;font-family:inherit;font-size:13px;outline:none;transition:.15s}
+select:focus,input:focus{border-color:var(--vio);box-shadow:0 0 0 3px var(--vio-soft)}
+input[type=number]{width:92px;text-align:right}
+.chip{padding:8px 14px;border-radius:10px;border:1px solid var(--line-2);background:var(--panel);
+  color:var(--mut);font-size:12.5px;font-weight:500;cursor:pointer;transition:.15s;font-family:inherit;
+  display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
+.chip .dot{width:8px;height:8px;border-radius:3px;background:currentColor;opacity:.35}
+.chip:hover{border-color:var(--vio);color:var(--tx)}
+.chip.on{background:var(--vio-soft);border-color:var(--vio-line);color:var(--vio);font-weight:600}
+.chip.on .dot{opacity:1}
+.chip.on.p1{color:#7c3aed}.chip.on.p2{color:#0891b2}.chip.on.p3{color:#4c1d95}.chip.on.p4{color:#c026d3}
+html[data-theme=dark] .chip.on.p2{color:#38d6ec}
+html[data-theme=dark] .chip.on.p3{color:#a78bfa}
+
+/* tabela */
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-weight:600;font-size:10.5px;text-transform:uppercase;letter-spacing:.7px;
+  color:var(--mut);padding:11px 13px;border-bottom:1px solid var(--line);white-space:nowrap;cursor:pointer;user-select:none}
+th:hover{color:var(--vio)}
+th.num,td.num{text-align:right}
+td{padding:12px 13px;border-bottom:1px solid var(--line);color:var(--tx-2)}
+td b{color:var(--tx);font-weight:600}
+tbody tr.clickable{cursor:pointer;transition:.12s}
+tbody tr.clickable:hover{background:var(--vio-soft)}
+tbody tr:last-child td{border-bottom:none}
+tfoot td{padding:13px;font-weight:600;color:var(--tx);border-top:1px solid var(--line-2);border-bottom:none;background:var(--bg)}
+.tbl-wrap{overflow-x:auto}
+.mono{font-variant-numeric:tabular-nums}
+.zero{color:var(--mut-2)}
+.muted{color:var(--mut)}
+
+/* badges / barras */
+.badge{display:inline-block;padding:3.5px 10px;border-radius:20px;font-size:11px;font-weight:600}
+.badge.ok{background:#e7f8f1;color:#059669}
+.badge.warn{background:#fef4e2;color:#b45309}
+.badge.neutral{background:var(--bg);color:var(--mut)}
+html[data-theme=dark] .badge.ok{background:#0d2f24}
+html[data-theme=dark] .badge.warn{background:#3a2a0c}
+.bar-track{height:8px;background:var(--bg);border-radius:5px;overflow:hidden;min-width:70px;border:1px solid var(--line)}
+.bar-fill{height:100%;border-radius:5px;background:var(--grad)}
+.rank-row{display:grid;grid-template-columns:1fr 120px 74px;gap:12px;align-items:center;padding:11px 4px;
+  border-bottom:1px solid var(--line);cursor:pointer;border-radius:8px;transition:.12s}
+.rank-row:hover{background:var(--vio-soft)}
+.rank-row:last-child{border-bottom:none}
+.rank-row .nm{font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rank-row .nm small{color:var(--mut);display:block;font-size:11.5px;font-weight:400;margin-top:2px}
+.rank-row .pc{text-align:right;font-weight:700;font-size:14.5px;letter-spacing:-.4px}
+.chart-box{position:relative;height:280px}
+.hide{display:none!important}
+
+/* ================= LOGIN ================= */
+#loginScreen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg);padding:24px}
+.login-card{background:var(--panel);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow-lg);
+  padding:40px 36px;max-width:340px;width:100%;text-align:center}
+.login-card h1{margin-bottom:6px}
+.login-card .sub{color:var(--mut);font-size:13px;margin-bottom:22px}
+.login-card form{display:flex;flex-direction:column;gap:12px}
+.login-card input[type=password]{width:100%;text-align:left;padding:11px 14px}
+
+/* dropzone */
+#drop{border:2px dashed var(--line-2);border-radius:18px;padding:56px 24px;text-align:center;
+  transition:.18s;cursor:pointer;background:var(--panel)}
+#drop.over{border-color:var(--vio);background:var(--vio-soft)}
+#drop .ic{width:58px;height:58px;border-radius:16px;background:var(--grad);display:grid;place-items:center;
+  margin:0 auto 18px;box-shadow:var(--shadow-lg)}
+#drop .ic svg{width:26px;height:26px;color:#fff}
+#drop .big{font-size:17px;font-weight:700;margin-bottom:6px;letter-spacing:-.3px}
+#drop .sm{color:var(--mut);font-size:13px}
+
+.err{background:#fff1f2;border:1px solid #fecdd3;color:#be123c;padding:12px 16px;border-radius:12px;font-size:13px;margin-bottom:14px}
+.ok-box{background:#ecfdf5;border:1px solid #c7efdf;color:#047857;padding:12px 16px;border-radius:12px;font-size:13px}
+html[data-theme=dark] .err{background:#2c1119;border-color:#4a1d2b;color:#fb7185}
+html[data-theme=dark] .ok-box{background:#0d2f24;border-color:#174736;color:#34d399}
+
+/* DRE */
+.dre{display:flex;flex-direction:column;gap:2px}
+.dre-l{display:grid;grid-template-columns:24px 1fr 148px 86px;gap:12px;align-items:center;padding:11px 13px;border-radius:10px;font-size:13.5px}
+.dre-l.head{background:var(--bg);font-weight:600}
+.dre-l.minus{color:#be123c}
+html[data-theme=dark] .dre-l.minus{color:#fb7185}
+.dre-l.result{background:var(--vio-soft);border:1px solid var(--vio-line);font-weight:700;margin:5px 0;color:var(--vio)}
+.dre-l.result2{background:#fdeafd;border:1px solid #f7d0f9;font-weight:700;margin:5px 0;color:#c026d3}
+html[data-theme=dark] .dre-l.result{color:#c4a8ff}
+html[data-theme=dark] .dre-l.result2{background:#3a1440;border-color:#5b1f63;color:#e879f9}
+.dre-l .sig{text-align:center;color:var(--mut)}
+.dre-l .vl{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+.dre-l .pcv{text-align:right;color:var(--mut);font-size:12px}
+.dre-sub{padding-left:49px;font-size:12.5px;color:var(--mut);display:grid;grid-template-columns:1fr 148px 86px;gap:12px;padding-top:4px;padding-bottom:4px}
+.dre-sub .vl{text-align:right;font-variant-numeric:tabular-nums}
+.dre-sub .pcv{text-align:right}
+
+/* pilares */
+.pilares{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:13px}
+.pilar{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:15px;box-shadow:var(--shadow)}
+.pilar .tp{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;gap:8px}
+.pilar .nm{font-size:11px;text-transform:uppercase;letter-spacing:.7px;color:var(--mut);font-weight:600;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pilar .pc{font-weight:700;font-size:13px;color:var(--c);flex-shrink:0}
+.pilar .vl{font-weight:700;font-size:20px;letter-spacing:-.7px;margin-bottom:9px}
+.p1{--c:#7c3aed}.p2{--c:#0891b2}.p3{--c:#4c1d95}.p4{--c:#c026d3}
+.pilar .bar-fill{background:var(--c)}
+
+/* detalhe */
+.dtabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin-bottom:20px;overflow-x:auto}
+.dtab{padding:11px 16px;font-size:13.5px;font-weight:500;color:var(--mut);cursor:pointer;
+  border-bottom:2px solid transparent;white-space:nowrap;transition:.15s}
+.dtab:hover{color:var(--tx)}
+.dtab.on{color:var(--vio);border-bottom-color:var(--vio);font-weight:600}
+.dtab .dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--warn);margin-left:5px;vertical-align:middle}
+
+/* simulador */
+input.simin{width:86px;background:var(--vio-soft);border:1px solid var(--vio-line);color:var(--tx);font-weight:600}
+input.simin.dirty{background:#fdeafd;border-color:#e9a8ef}
+html[data-theme=dark] input.simin.dirty{background:#3a1440;border-color:#5b1f63}
+.delta-up{color:#059669;font-weight:600}
+.delta-dn{color:#e11d48;font-weight:600}
+html[data-theme=dark] .delta-up{color:#34d399}
+html[data-theme=dark] .delta-dn{color:#fb7185}
+.sim-note{font-size:12.5px;color:var(--mut);margin-bottom:16px;line-height:1.6}
+
+.sect{margin-top:22px}
+.sect-h{display:flex;align-items:center;gap:12px;margin-bottom:13px;flex-wrap:wrap}
+.sect-h h2{letter-spacing:-.3px}
+.sect-h .sp{flex:1}
+.g2{display:grid;grid-template-columns:1.25fr 1fr;gap:16px}
+@media(max-width:1080px){.g2{grid-template-columns:1fr}}
+@media(max-width:900px){
+  main{padding:16px 14px 50px}.top{padding:16px 14px 0}
+  .dre-l{grid-template-columns:20px 1fr 108px}.dre-l .pcv{display:none}
+  .dre-sub{grid-template-columns:1fr 108px}.dre-sub .pcv{display:none}
+  .search input{width:150px}
+}
+</style>
+</head>
+<body>
+
+<div id="loginScreen" class="hide">
+  <div class="login-card">
+    <svg class="flogo" style="width:120px;margin-bottom:22px" xmlns="http://www.w3.org/2000/svg" viewBox="-0.15 0 334.1 84.29" role="img" aria-label="Faiston"><path d="M94.8,30.25a12.44,12.44,0,0,1,1.26-5.52,15,15,0,0,1,3.38-4.52,16.28,16.28,0,0,1,4.86-3.06A15.06,15.06,0,0,1,110.05,16h.63a2.12,2.12,0,0,1,1.66.65,2.55,2.55,0,0,1,.59,1.78v6a3,3,0,0,1-.62,1.94,2,2,0,0,1-1.63.77h-.63a3.36,3.36,0,0,0-1.26.24,3.5,3.5,0,0,0-1.07.64,3.32,3.32,0,0,0-.76,1,2.64,2.64,0,0,0-.29,1.22v3.62h5a2.24,2.24,0,0,1,1.66.59,2.51,2.51,0,0,1,.58,1.84v5.77a2.87,2.87,0,0,1-.58,2,2.15,2.15,0,0,1-1.66.63h-5v22.6a2.15,2.15,0,0,1-.8,1.81,2.83,2.83,0,0,1-1.76.61H97.29a2.36,2.36,0,0,1-2.49-2.42V44.69H91.55a2.52,2.52,0,0,1-1.79-.63,2.62,2.62,0,0,1-.68-2V36.3a2.31,2.31,0,0,1,.68-1.84,2.65,2.65,0,0,1,1.79-.59H94.8Z" fill="#3A3A3A"/></svg>
+    <h1>Painel de MC</h1>
+    <p class="sub">Entre com a senha da equipe pra acessar a carteira.</p>
+    <form id="loginForm">
+      <input type="password" id="loginSenha" placeholder="Senha" autocomplete="current-password" required autofocus>
+      <button class="btn" type="submit" style="width:100%;justify-content:center">Entrar</button>
+    </form>
+    <div id="loginErr" class="err hide" style="margin-top:14px"></div>
+  </div>
+</div>
+
+<div id="appRoot" class="hide">
+<header class="hdr">
+  <svg class="flogo" xmlns="http://www.w3.org/2000/svg" viewBox="-0.15 0 334.1 84.29" role="img" aria-label="Faiston"><defs><style>.cls-1,.cls-2,.cls-3,.cls-4,.cls-5,.cls-6{fill-rule:evenodd;}.cls-1{fill:url(#e);}.cls-2{fill:url(#a);}.cls-3{fill:url(#f);}.cls-4{fill:url(#d);}.cls-5{fill:url(#c);}.cls-6{fill:url(#b);}</style><linearGradient id="e" x1="2.55" x2="14.67" y1="62.94" y2="83.92" gradientUnits="userSpaceOnUse"><stop stop-color="#00029c" offset=".09"/><stop stop-color="#038cc9" offset=".53"/><stop stop-color="#05e2e5" offset=".8"/></linearGradient><linearGradient id="a" x1="75.3" x2="19.26" y1="56.42" y2="56.42" gradientUnits="userSpaceOnUse"><stop stop-color="#00fafb" offset=".18"/><stop stop-color="#00ebfa" offset=".24"/><stop stop-color="#00c5f6" offset=".36"/><stop stop-color="#0087f1" offset=".52"/><stop stop-color="#0054ec" offset=".65"/><stop stop-color="#2226c0" offset="1"/></linearGradient><linearGradient id="f" x1="3351.2" x2="3297.6" y1="-2879" y2="-2879" gradientTransform="translate(-1273.9 4218.5) rotate(-31.91)" gradientUnits="userSpaceOnUse"><stop stop-color="#fd5665" offset=".16"/><stop stop-color="#fd11a4" offset=".58"/><stop stop-color="#f110a3" offset=".62"/><stop stop-color="#c00d9f" offset=".79"/><stop stop-color="#a10b9d" offset=".93"/><stop stop-color="#960a9c" offset="1"/></linearGradient><linearGradient id="d" x1="3379.2" x2="3337.1" y1="-2822.4" y2="-2822.4" gradientTransform="matrix(.85 -.53 .53 .85 -1342.3 4219.8)" gradientUnits="userSpaceOnUse"><stop stop-color="#fd5566" offset=".01"/><stop stop-color="#fc1a74" offset=".53"/><stop stop-color="#b103a1" offset=".86"/></linearGradient><linearGradient id="c" x1="34.19" x2="64.38" y1="15.06" y2="67.37" gradientUnits="userSpaceOnUse"><stop stop-color="aqua" offset=".22"/><stop stop-color="#00d8fa" offset=".25"/><stop stop-color="#00a5f4" offset=".3"/><stop stop-color="#017def" offset=".34"/><stop stop-color="#0161ec" offset=".37"/><stop stop-color="#014fea" offset=".4"/><stop stop-color="#0149e9" offset=".43"/><stop stop-color="#2226c0" offset=".52"/></linearGradient><linearGradient id="b" x1="67.14" x2="-8.92" y1="42.91" y2="-.99" gradientUnits="userSpaceOnUse"><stop stop-color="aqua" offset=".72"/><stop stop-color="#00f9fe" offset=".75"/><stop stop-color="#01e7fb" offset=".78"/><stop stop-color="#02cbf7" offset=".82"/><stop stop-color="#04a3f1" offset=".87"/><stop stop-color="#0670e9" offset=".91"/><stop stop-color="#084ae3" offset=".94"/></linearGradient></defs><g><g><path d="M94.8,30.25a12.44,12.44,0,0,1,1.26-5.52,15,15,0,0,1,3.38-4.52,16.28,16.28,0,0,1,4.86-3.06A15.06,15.06,0,0,1,110.05,16h.63a2.12,2.12,0,0,1,1.66.65,2.55,2.55,0,0,1,.59,1.78v6a3,3,0,0,1-.62,1.94,2,2,0,0,1-1.63.77h-.63a3.36,3.36,0,0,0-1.26.24,3.5,3.5,0,0,0-1.07.64,3.32,3.32,0,0,0-.76,1,2.64,2.64,0,0,0-.29,1.22v3.62h5a2.24,2.24,0,0,1,1.66.59,2.51,2.51,0,0,1,.58,1.84v5.77a2.87,2.87,0,0,1-.58,2,2.15,2.15,0,0,1-1.66.63h-5v22.6a2.15,2.15,0,0,1-.8,1.81,2.83,2.83,0,0,1-1.76.61H97.29a2.36,2.36,0,0,1-2.49-2.42V44.69H91.55a2.52,2.52,0,0,1-1.79-.63,2.62,2.62,0,0,1-.68-2V36.3a2.31,2.31,0,0,1,.68-1.84,2.65,2.65,0,0,1,1.79-.59H94.8Z" fill="#3A3A3A"/><path d="M159.64,67.38a3,3,0,0,1-.19,1,1.6,1.6,0,0,1-.64.77,1.54,1.54,0,0,1-.82.44,4.44,4.44,0,0,1-.82.09H151a2.69,2.69,0,0,1-1.07-.17,1.6,1.6,0,0,1-.67-.49,2.56,2.56,0,0,1-.42-.77c-.12-.3-.24-.63-.37-1L148,65.87a18.28,18.28,0,0,1-1.94,1.67,15.08,15.08,0,0,1-2.4,1.47,15.37,15.37,0,0,1-2.81,1,12.33,12.33,0,0,1-3.11.39,20.7,20.7,0,0,1-10.44-2.79,19.65,19.65,0,0,1-4.15-3.22,20.63,20.63,0,0,1-6-14.7,20.41,20.41,0,0,1,1.61-8.15A20.76,20.76,0,0,1,123.16,35a20.2,20.2,0,0,1,6.54-4.38,20.43,20.43,0,0,1,8.05-1.59,14,14,0,0,1,6.74,1.64A11.92,11.92,0,0,1,147,32.5a13.79,13.79,0,0,1,2,2.29l.92-2.87c.21-.53.38-1,.52-1.28a2.42,2.42,0,0,1,.44-.72,1.18,1.18,0,0,1,.59-.32,4.78,4.78,0,0,1,1-.08h4.7a3.79,3.79,0,0,1,.82.1,1.54,1.54,0,0,1,.82.44,2,2,0,0,1,.64.79,2.64,2.64,0,0,1,.19,1ZM128.53,49.73a11.5,11.5,0,0,0,.64,3.89A9.35,9.35,0,0,0,131,56.76a8.75,8.75,0,0,0,6.63,2.87,9.94,9.94,0,0,0,7.09-2.87,9.31,9.31,0,0,0,2.1-3.14,10.18,10.18,0,0,0-2.1-10.95,9.69,9.69,0,0,0-3.15-2.19,9.58,9.58,0,0,0-3.94-.81,8.63,8.63,0,0,0-6.63,3,10,10,0,0,0-1.85,3.21A11.48,11.48,0,0,0,128.53,49.73Z" fill="#3A3A3A"/><path d="M167.18,16.19a2.56,2.56,0,0,1,.57-1.88,2.5,2.5,0,0,1,1.77-.55h7.33a2.78,2.78,0,0,1,1.78.55,2.31,2.31,0,0,1,.68,1.88v6.15a2.4,2.4,0,0,1-.17.82,3.88,3.88,0,0,1-.49.85,2.53,2.53,0,0,1-.78.67,1.94,1.94,0,0,1-1,.27h-7.33q-2.34,0-2.34-2.61Zm0,16a2.71,2.71,0,0,1,.57-1.73,2.1,2.1,0,0,1,1.77-.73h7.23a2.31,2.31,0,0,1,.82.17,3,3,0,0,1,.83.51,3.41,3.41,0,0,1,.64.77,1.91,1.91,0,0,1,.27,1V67.29a2.35,2.35,0,0,1-.66,1.81,2.7,2.7,0,0,1-1.9.61h-7.23c-1.56,0-2.34-.8-2.34-2.42Z" fill="#3A3A3A"/><path d="M192.89,57.26a9.32,9.32,0,0,0,1.85,1.44,13.43,13.43,0,0,0,1.91.94,9.82,9.82,0,0,0,1.61.52,4.85,4.85,0,0,0,1,.16c.4,0,.91,0,1.53,0a7.88,7.88,0,0,0,1.78-.28,3.7,3.7,0,0,0,1.47-.77,1.91,1.91,0,0,0,.62-1.52,2.52,2.52,0,0,0-.35-1.4,2.84,2.84,0,0,0-1-.88,8.24,8.24,0,0,0-1.63-.65l-2.16-.66a25.63,25.63,0,0,1-6.25-2.43,13.8,13.8,0,0,1-3.9-3.16,10.39,10.39,0,0,1-2-3.77,15.6,15.6,0,0,1-.57-4.26,10.82,10.82,0,0,1,1-4.76,10.62,10.62,0,0,1,3-3.67,13.94,13.94,0,0,1,4.61-2.36,21.48,21.48,0,0,1,9.7-.51,15.08,15.08,0,0,1,3.32,1,16.65,16.65,0,0,1,3.08,1.83,24.69,24.69,0,0,1,3,2.66,2,2,0,0,1,.55,1.19,1.62,1.62,0,0,1-.71,1.18c-.82.67-1.6,1.33-2.35,2s-1.52,1.38-2.32,2.18a1.73,1.73,0,0,1-.76.39,1.5,1.5,0,0,1-.73,0,2.24,2.24,0,0,1-.66-.32,2.59,2.59,0,0,1-.57-.53,5.59,5.59,0,0,0-2.52-1.66,9.46,9.46,0,0,0-2.66-.42,4.93,4.93,0,0,0-2.46.53,1.65,1.65,0,0,0-.85,1.64,1.74,1.74,0,0,0,.61,1.28,4.52,4.52,0,0,0,1.36.74,12.58,12.58,0,0,0,1.71.46,15.46,15.46,0,0,1,1.65.39,47,47,0,0,1,5.21,2A15.82,15.82,0,0,1,213,48.36a10.81,10.81,0,0,1,2.7,3.73,13.11,13.11,0,0,1,1,5.3A11.79,11.79,0,0,1,212,67.1a15.77,15.77,0,0,1-5.16,2.55,22.56,22.56,0,0,1-6.43.88,23.6,23.6,0,0,1-4-.34,19.08,19.08,0,0,1-3.92-1.12,18.14,18.14,0,0,1-3.6-2,14.53,14.53,0,0,1-3-2.94,3.6,3.6,0,0,1-.52-.93,2.57,2.57,0,0,1-.16-1,2.4,2.4,0,0,1,.19-.86,1.71,1.71,0,0,1,.55-.68l4.08-4.07a1.45,1.45,0,0,1,1.34-.44A4.64,4.64,0,0,1,192.89,57.26Z" fill="#3A3A3A"/><path d="M225.89,23.44a1.74,1.74,0,0,1,.65-1.47,7.69,7.69,0,0,1,1.85-.93l7.17-2.49a1.53,1.53,0,0,1,.3,0h.27a1.65,1.65,0,0,1,1.56.68,3.55,3.55,0,0,1,.4,1.78l0,8.67h4.33a2.29,2.29,0,0,1,1.64.6,2.36,2.36,0,0,1,.63,1.79v6.09a2.62,2.62,0,0,1-.63,1.94,2.25,2.25,0,0,1-1.64.61h-4.33l0,26.61a2.3,2.3,0,0,1-.7,1.81,2.81,2.81,0,0,1-1.93.61h-7.13a2.14,2.14,0,0,1-2.44-2.42l0-26.61h-3.25q-2.43,0-2.43-2.55V32a2.13,2.13,0,0,1,2.43-2.39h3.25Z" fill="#3A3A3A"/><path d="M248.16,49.73a21,21,0,0,1,.74-5.58,20.72,20.72,0,0,1,2.09-5,20.4,20.4,0,0,1,7.4-7.36,21.34,21.34,0,0,1,10.55-2.77A20.6,20.6,0,0,1,277,30.64,20.34,20.34,0,0,1,283.58,35,20.84,20.84,0,0,1,288,41.58a21.11,21.11,0,0,1,.88,13.71,21,21,0,0,1-2.08,5,20.37,20.37,0,0,1-3.22,4.17,19.89,19.89,0,0,1-4.19,3.22,20.77,20.77,0,0,1-10.45,2.79,21.07,21.07,0,0,1-10.55-2.79,20.58,20.58,0,0,1-7.4-7.39,21.07,21.07,0,0,1-2.09-5A20.78,20.78,0,0,1,248.16,49.73Zm11.53,0a11.5,11.5,0,0,0,.64,3.89,9.5,9.5,0,0,0,1.84,3.14,8.67,8.67,0,0,0,2.87,2.1,9.13,9.13,0,0,0,3.81.77,8.8,8.8,0,0,0,3.71-.77,8.53,8.53,0,0,0,2.81-2.1,9.19,9.19,0,0,0,1.77-3.14,12.58,12.58,0,0,0,0-7.74,9.82,9.82,0,0,0-1.77-3.21,8.26,8.26,0,0,0-2.81-2.19,8.38,8.38,0,0,0-3.71-.81,8.69,8.69,0,0,0-3.81.81,8.38,8.38,0,0,0-2.87,2.19,10.16,10.16,0,0,0-1.84,3.21A11.48,11.48,0,0,0,259.69,49.73Z" fill="#3A3A3A"/><path d="M296.73,30.24a2.11,2.11,0,0,1,.87-.44,4.59,4.59,0,0,1,.87-.09h4.77a2.28,2.28,0,0,1,1,.2,2.18,2.18,0,0,1,.69.55,3.27,3.27,0,0,1,.46.79c.12.29.23.6.33.91l.67,2.77a7.24,7.24,0,0,1,1.53-2A11.77,11.77,0,0,1,310.52,31a17.09,17.09,0,0,1,3.61-1.4,18,18,0,0,1,4.58-.55,14.46,14.46,0,0,1,6.43,1.38,14.32,14.32,0,0,1,4.8,3.78,16.47,16.47,0,0,1,3,5.58,22,22,0,0,1,1,6.82V67.29a2.77,2.77,0,0,1-.52,1.81,2.06,2.06,0,0,1-1.66.61h-7.3a2.87,2.87,0,0,1-1.86-.45,2.38,2.38,0,0,1-.51-1.78V47a5.59,5.59,0,0,0-.61-2.57,7.42,7.42,0,0,0-1.63-2.15,7.52,7.52,0,0,0-2.29-1.46,6.62,6.62,0,0,0-2.6-.54,5.83,5.83,0,0,0-2.32.51,7.58,7.58,0,0,0-2.18,1.4,8.27,8.27,0,0,0-1.68,2.11,6.17,6.17,0,0,0-.77,2.63V67.38a2.87,2.87,0,0,1-.21,1.07,1.67,1.67,0,0,1-.61.82,2.77,2.77,0,0,1-.78.35,3.46,3.46,0,0,1-.83.09h-7.14a2.22,2.22,0,0,1-2.56-2.42V32a2.27,2.27,0,0,1,.27-1.1,2,2,0,0,1,.74-.79Z" fill="#3A3A3A"/><path class="cls-1" d="M12.11,76.49c0,2.7,2.29,4.09,4.69,2.75l-5.49,3.41C5.37,86.33,0,83.63,0,76.56V61.4l12.11-2.8Z"/><path class="cls-2" d="M12.11,67.88l40-24.81,6-3.7c2.58-1.61,3-4.95.37-6.6l4.91,3c6.2,3.85,6.2,10.7,0,14.53L16.8,79.24c-3.06,1.9-5.13.32-5.13-2.39Z"/><path class="cls-3" d="M3.42,24.6l-.3.19-.19.11A6.21,6.21,0,1,0,9.49,35.44a4.07,4.07,0,0,0,.48-.33L16,31.34,36.46,18.65c3.7-2.29,6.64-5.12,6.6-12.81L43,0Z"/><path class="cls-4" d="M16.26,42a3.62,3.62,0,0,0-.43.24l-.38.26L7.18,47.73l-.08.05L6.7,48h0l-.08.05C2.9,50.39,0,53.21,0,60.91v5.84l12.83-7.93c.14-.08.28-.15.42-.24l.38-.26,8.27-5.19.09-.06.4-.24h0l.07,0c3.71-2.3,6.65-5.13,6.61-12.82L29,34.11Z"/><path class="cls-5" d="M58.44,32.77,37.91,20l-.43.27-11,6.86L52.09,43.07l6.47-3.33A4,4,0,0,0,58.44,32.77Z"/><path class="cls-6" d="M6,1.87H6a6,6,0,0,0-3.31,11L11,17.62l11.51-7.16L11.31,3.52A9.73,9.73,0,0,0,6,1.87Z"/></g></g></svg>
+  <span class="ops">OPS</span>
+  <div class="div"></div>
+  <div class="pg"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M8 15V9l4 4 4-4v6"/></svg>Margem de Contribuição</div>
+  <div class="acts">
+    <button class="icobtn" id="btnTheme" title="Alternar tema"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
+    <button class="icobtn" id="btnLogout" title="Sair"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5M21 12H9"/></svg></button>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="top">
+    <div class="ttl">
+      <h1>Margem de Contribuição</h1>
+      <p id="hdrSub">Carteira de MCs · <span id="hdrDate"></span></p>
+    </div>
+    <div class="acts">
+      <div class="search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        <input type="text" id="fBusca" placeholder="Buscar projeto ou contrato">
+      </div>
+      <select id="fCliente"><option value="">Todos os clientes</option></select>
+      <select id="fMC" style="max-width:230px"><option value="">Todas as MCs</option></select>
+      <button class="btn" id="btnAdd"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>Importar MC</button>
+      <button class="icobtn" id="btnExport" title="Exportar CSV"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg></button>
+      <button class="icobtn" id="btnClear" title="Limpar painel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg></button>
+    </div>
+  </div>
+
+  <main>
+    <div id="errBox"></div>
+
+    <section id="viewCarteira">
+      <div id="emptyState">
+        <div id="drop">
+          <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg></div>
+          <div class="big">Arraste as planilhas de MC aqui</div>
+          <div class="sm">ou clique para escolher — .xlsx, .xlsb ou .xlsm · vários arquivos de uma vez</div>
+          <div class="sm" style="margin-top:16px;opacity:.7">Os arquivos são enviados para o servidor da Faiston e ficam disponíveis pra toda a equipe.</div>
+        </div>
+      </div>
+
+      <div id="carteiraContent" class="hide">
+        <div class="kpis" id="kpiRow"></div>
+        <div class="tabbar" id="mainTabs"></div>
+        <div id="tabBody"></div>
+      </div>
+    </section>
+
+    <section id="viewDetalhe" class="hide"></section>
+  </main>
+</div>
+</div>
+
+<input type="file" id="fileInput" multiple accept=".xlsx,.xlsb,.xlsm" style="display:none">
+
+<script>
+/* ============================================================
+   Painel de MC — Faiston
+   Leitura local do modelo oficial de Memória de Cálculo.
+   Nenhum dado sai do navegador.
+   ============================================================ */
+
+/* ---------- utils ---------- */
+const N = s => (s==null?'':String(s)).trim().toUpperCase()
+  .normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ');
+
+function num(v){
+  if (v==null || v==='') return 0;
+  if (typeof v === 'number') return isFinite(v)?v:0;
+  let s = String(v).replace(/[R$\s%]/g,'');
+  if (s.includes(',')) s = s.replace(/\./g,'').replace(',','.');
+  const n = parseFloat(s);
+  return isFinite(n)?n:0;
+}
+const money = v => (v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL',minimumFractionDigits:2});
+const money0 = v => (v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0});
+const pct = v => (v==null||!isFinite(v)) ? '—' : (v*100).toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})+'%';
+const pct2 = v => (v==null||!isFinite(v)) ? '—' : (v*100).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+'%';
+const qty = v => (v||0).toLocaleString('pt-BR',{maximumFractionDigits:2});
+const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const el = id => document.getElementById(id);
+
+const PILARES = [
+  {k:'equipe',  n:'Equipe Faiston',        sheet:'2.1', cls:'p1', color:'#7c3aed'},
+  {k:'campo',   n:'Suporte de Campo',      sheet:'2.2', cls:'p2', color:'#22d3ee'},
+  {k:'log',     n:'Equipamentos/Logística',sheet:'2.3', cls:'p3', color:'#4c1d95'},
+  {k:'invest',  n:'Investimentos',         sheet:'2.4', cls:'p4', color:'#d946ef'}
+];
+
+/* ============================================================
+   O parsing das planilhas (xlsx/xlsb/xlsm) roda no backend —
+   veja faiston-mc/app/parser.py. O que fica aqui é só o que a UI
+   ainda usa no navegador direto: custo de linha e o simulador.
+   ============================================================ */
+/* custo da linha = qtde × valor unitário × meses (quando o bloco tem coluna de meses) */
+const lineCost = r => r.qtd * r.unit * (r.hm ? r.meses : 1);
+
+/* núcleo do cálculo — mesma lógica do 5.DRE da planilha, usado pelo simulador */
+function calcDRE(receita, somas, impostoFator, rateios){
+  const impostos = receita * impostoFator;
+  const receitaLiq = receita - impostos;
+  const custo = PILARES.reduce((a,p)=>a+(somas[p.k]||0),0);
+  const mcProjeto = receitaLiq - custo;
+  const rateioVals = rateios.map(r=>({nome:r.nome, valor:receitaLiq*r.p, p:r.p}));
+  const rateioTot = rateioVals.reduce((a,r)=>a+r.valor,0);
+  const mcDireta = mcProjeto - rateioTot;
+  return {
+    receita, impostos, receitaLiq, custo, mcProjeto, mcDireta,
+    mcProjetoPct: receitaLiq ? mcProjeto/receitaLiq : null,
+    mcDiretaPct:  receitaLiq ? mcDireta/receitaLiq  : null,
+    rateioVals, rateioTot
+  };
+}
+
+/* ============================================================
+   DE-PARA — linhas da MC -> as 14 caixinhas do Dashboard Gerencial
+   ============================================================ */
+const CAIXAS = [
+  {k:'n1',       n:'N1',              col:'N1',                 pil:'equipe'},
+  {k:'n2',       n:'N2',              col:'N2',                 pil:'equipe'},
+  {k:'campo',    n:'Tec campo',       col:'Tec campo',          pil:'campo'},
+  {k:'logpecas', n:'Logística de peças',col:'Logistica de peças',pil:'log'},
+  {k:'molog',    n:'M.O. Logística',  col:'M.O. Logistica',     pil:'equipe'},
+  {k:'armaz',    n:'Armazenagem',     col:'Armazenagem',        pil:'log'},
+  {k:'reparo',   n:'Reparos peças',   col:'Reparos peças',      pil:'log'},
+  {k:'spare',    n:'Invest. Spare',   col:'Invest. Spare',      pil:'invest'},
+  {k:'locacao',  n:'Locação',         col:'Locação',            pil:'invest'},
+  {k:'sdm',      n:'SDM',             col:'SDM2',               pil:'equipe'},
+  {k:'sistema',  n:'Sistema',         col:'SISTEMA',            pil:'invest'},
+  {k:'tel',      n:'Telefonia',       col:'TELEFONIA',          pil:'invest'},
+  {k:'adm',      n:'ADM (MO-AL-FC)',  col:'ADM(MO - AL - FC )', pil:'equipe'},
+  {k:'gp',       n:'GP',              col:'GP',                 pil:'equipe'},
+  {k:'nao',      n:'Não mapeado',     col:'—',                  pil:'*'}
+];
+const CAIXA_BY_K = Object.fromEntries(CAIXAS.map(c=>[c.k,c]));
+
+const RX_TEL = /(TELEFON|VOZ|PABX|CELULAR|LINK DE|OMNIPBX|CALL CENTER|E1\b|RAMAL)/;
+const RX_LOC = /(LOCACAO|ALUGUEL|LOCAC|ESPACO COMERCIAL|COMODATO)/;
+
+/* devolve a caixinha de uma linha; usar sempre com o pilar de origem */
+function classificar(pilarK, r){
+  const t = N([r.g1, r.cat, r.desc].filter(Boolean).join(' '));
+  if(pilarK === 'campo') return 'campo';
+
+  if(pilarK === 'equipe'){
+    if(/\bN1\b/.test(t) || /SERVICE DESK|HELP ?DESK/.test(t))       return 'n1';
+    if(/\bN2\b/.test(t))                                            return 'n2';
+    if(/\bSDM\b|SERVICE DELIVERY/.test(t))                          return 'sdm';
+    if(/LOGISTIC/.test(t))                                           return 'molog';
+    if(/\bGP\b|GEREN(TE|CIA) DE PROJET|ANALISTA DE PROJETOS|COORDENADOR DE PROJETO/.test(t)) return 'gp';
+    if(/BACKOFFICE|BACK OFFICE|ADMINISTRAT|FACILIT|FINANCEIR|LIDER|TICKET MANAGER|COORDENADOR/.test(t)) return 'adm';
+    if(/SUPORTE|INFRAESTRUT|TECNIC|CAMPO|REDES|SEGURANC/.test(t))     return 'n2';
+    return 'nao';
+  }
+  if(pilarK === 'log'){
+    if(/ARMAZENAG|SEGURO/.test(t))                     return 'armaz';
+    if(/DISTRIBUI|MOVIMENTAC|FRETE|TRANSPORT|LOGISTIC/.test(t)) return 'logpecas';
+    if(/REPARO/.test(t))                               return 'reparo';
+    if(RX_TEL.test(t))                                 return 'tel';
+    if(RX_LOC.test(t))                                 return 'locacao';
+    return 'nao';
+  }
+  if(pilarK === 'invest'){
+    if(/SISTEMA|SOFTWARE|LICENC/.test(t))              return 'sistema';
+    if(RX_TEL.test(t))                                 return 'tel';
+    if(RX_LOC.test(t))                                 return 'locacao';
+    if(/COMPRA DE PECA|PECA|SPARE|EQUIPAMENT|FERRAMENT|NOTEBOOK|SERVIDOR|STORAGE/.test(t)) return 'spare';
+    return 'nao';
+  }
+  return 'nao';
+}
+
+/* todas as linhas da MC, já classificadas e com a aba de origem */
+function linhasClassificadas(mc){
+  const out = [];
+  PILARES.forEach(p=>{
+    const blk = mc.blocos[p.k] || {};
+    (blk.rows||[]).forEach((r,i)=>{
+      out.push({...r, idx:i+1, pilarK:p.k, pilar:p.n, aba:blk.sheet||p.sheet,
+                caixa:classificar(p.k, r), contrato:mc.contrato, mcId:mc.id, projeto:mc.projeto, cliente:mc.cliente});
+    });
+  });
+  return out;
+}
+
+/* soma por caixinha */
+function somaCaixas(mc){
+  const s = {}; CAIXAS.forEach(c=>s[c.k]=0);
+  linhasClassificadas(mc).forEach(l => s[l.caixa] += l.total);
+  return s;
+}
+
+/* linha do Dashboard Gerencial montada a partir da MC */
+function dashRow(mc){
+  const meses = mc.mesesContrato || null;
+  const caixas = somaCaixas(mc);
+  return {
+    id: mc.id, contrato: mc.contrato, projeto: mc.projeto, cliente: mc.cliente,
+    produto: mc.produto||'', responsavel: mc.responsavel||'', comentarios: mc.comentarios||'',
+    inicio: mc.inicio||'', fim: mc.fim||'', meses,
+    vigencia: meses ? meses+' MESES' : '',
+    total: mc.receita, mensal: meses ? mc.receita/meses : null,
+    fat: meses ? (mc.receita/meses)/12 : null,
+    tax: mc.impostoFator, imp: mc.impostos, net: mc.receitaLiq,
+    costsTotais: mc.custo, costsMensais: meses ? mc.custo/meses : null,
+    caixas, dm: mc.mcProjeto, dmPct: mc.mcProjetoPct,
+    rateios: mc.rateioTot, mcDireta: mc.mcDireta, mcDiretaPct: mc.mcDiretaPct,
+    arquivo: mc.arquivo, alerta: (mc.divergencias.length||mc.linhasForaDaConta.length)?1:0
+  };
+}
+
+/* ============================================================
+   UI — visual Faiston Ops
+   ============================================================ */
+const ICO = {
+  mc:'<path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>',
+  cash:'<rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/>',
+  chart:'<path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/>',
+  layers:'<path d="m12 2 9 5-9 5-9-5 9-5z"/><path d="m3 12 9 5 9-5M3 17l9 5 9-5"/>',
+  tag:'<path d="M20.6 13.4 12 22l-9-9V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.5"/>',
+  grid:'<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
+  list:'<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
+  users:'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>',
+  pct:'<path d="M19 5 5 19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/>',
+  sheet:'<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/>'
+};
+const svg=(p,w)=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w||2}" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+const CX_COLOR={n1:'#7c3aed',n2:'#8b5cf6',campo:'#22d3ee',logpecas:'#4c1d95',molog:'#6d28d9',
+  armaz:'#0891b2',reparo:'#a855f7',spare:'#d946ef',locacao:'#c026d3',sdm:'#9333ea',
+  sistema:'#e879f9',tel:'#06b6d4',adm:'#5b21b6',gp:'#a78bfa',nao:'#94a3b8'};
+
+/* ---------- store ---------- */
+let MCS=[];
+let FILTRO={cliente:'',busca:'',mc:''};
+let SORT={col:'dmPct',dir:-1};
+let TAB='gerencial';
+let ESCALA='total';          // 'total' | 'mes'
+let DRILL=null;              // caixinha aberta
+
+/* dados moram no backend agora — o painel é compartilhado pela equipe */
+async function loadMCs(){
+  try{
+    const res=await fetch('/api/mcs',{credentials:'include'});
+    if(res.status===401){ MCS=[]; showLogin(); return; }
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    MCS=await res.json();
+  }catch(e){
+    MCS=[];
+    showErr('Não consegui carregar as MCs do servidor. Tente recarregar a página.');
+  }
+}
+
+/* ---------- ingestão ---------- */
+function showErr(html){ el('errBox').innerHTML = html?`<div class="err">${html}</div>`:''; }
+async function handleFiles(files){
+  if(!files.length) return;
+  showErr('');
+  const fd=new FormData();
+  for(const f of files) fd.append('files',f,f.name);
+  try{
+    const res=await fetch('/api/mcs/upload',{method:'POST',credentials:'include',body:fd});
+    if(res.status===401){ showLogin(); return; }
+    const data=await res.json();
+    if(data.erros && data.erros.length)
+      showErr(data.erros.map(e=>`<b>${esc(e.arquivo||'arquivo')}</b> — ${esc(e.mensagem||'erro ao processar')}`).join('<br>'));
+    await loadMCs();
+  }catch(e){
+    showErr('Não consegui enviar os arquivos para o servidor. Tente novamente.');
+  }
+  render();
+}
+
+/* ---------- seleção ---------- */
+function filtradas(){
+  return MCS.filter(m=>{
+    if(FILTRO.mc && m.id!==FILTRO.mc) return false;
+    if(FILTRO.cliente && m.cliente!==FILTRO.cliente) return false;
+    if(FILTRO.busca){
+      const q=N(FILTRO.busca);
+      if(!(N(m.projeto).includes(q)||N(m.contrato).includes(q)||N(m.cliente).includes(q))) return false;
+    }
+    return true;
+  });
+}
+const rows = () => filtradas().map(dashRow);
+
+/* escala: total do contrato ou valor mensal */
+function sc(v,meses){
+  if(v==null) return null;
+  if(ESCALA==='mes') return meses ? v/meses : null;
+  return v;
+}
+const sLbl = () => ESCALA==='mes' ? 'valores mensais' : 'total do contrato';
+
+function totais(rs){
+  const t=rs.reduce((a,r)=>({total:a.total+r.total,imp:a.imp+r.imp,net:a.net+r.net,
+    costs:a.costs+r.costsTotais,dm:a.dm+r.dm,rateios:a.rateios+r.rateios,mcd:a.mcd+r.mcDireta}),
+    {total:0,imp:0,net:0,costs:0,dm:0,rateios:0,mcd:0});
+  t.dmPct=t.net?t.dm/t.net:null;
+  t.mcdPct=t.net?t.mcd/t.net:null;
+  t.caixas={}; CAIXAS.forEach(c=>t.caixas[c.k]=0);
+  rs.forEach(r=>CAIXAS.forEach(c=>t.caixas[c.k]+=r.caixas[c.k]||0));
+  return t;
+}
+
+/* ============================================================
+   RENDER
+   ============================================================ */
+function render(){
+  const has=MCS.length>0;
+  el('emptyState').classList.toggle('hide',has);
+  el('carteiraContent').classList.toggle('hide',!has);
+  const rev=MCS.filter(m=>m.divergencias.length||m.linhasForaDaConta.length).length;
+  el('hdrSub').innerHTML = has
+    ? `${MCS.length} MC${MCS.length>1?'s':''} importada${MCS.length>1?'s':''}${rev?` · <b>${rev}</b> pedindo revisão`:''} · ${hoje()}`
+    : `Carteira de MCs · ${hoje()}`;
+  syncSelects();
+  if(!has) return;
+  const rs=rows();
+  renderKPIs(rs);
+  renderTabs();
+  renderTabBody(rs);
+}
+const hoje = () => new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+
+function syncSelects(){
+  const cl=[...new Set(MCS.map(m=>m.cliente))].sort();
+  el('fCliente').innerHTML=`<option value="">Todos os clientes</option>`+
+    cl.map(c=>`<option ${FILTRO.cliente===c?'selected':''}>${esc(c)}</option>`).join('');
+  const ms=MCS.filter(m=>!FILTRO.cliente||m.cliente===FILTRO.cliente);
+  el('fMC').innerHTML=`<option value="">Todas as MCs</option>`+
+    ms.map(m=>`<option value="${esc(m.id)}" ${FILTRO.mc===m.id?'selected':''}>${esc(m.contrato||'—')} · ${esc(m.projeto).slice(0,42)}</option>`).join('');
+}
+
+function renderKPIs(rs){
+  const t=totais(rs);
+  const um = rs.length===1 ? rs[0] : null;
+  const cards=[
+    {cls:'hi',ic:ICO.pct,pill:'DM / NET REVENUE',pcls:'',lbl:'Margem de contribuição',
+     val:pct(t.dmPct),sub:money0(t.dm)},
+    {cls:'c3',ic:ICO.mc,pill:'após rateios',pcls:'',lbl:'MC direta Faiston',
+     val:pct(t.mcdPct),sub:money0(t.mcd)},
+    {cls:'c2',ic:ICO.cash,pill:`${rs.length} contrato${rs.length>1?'s':''}`,pcls:'n',lbl:'Total contrato',
+     val:money0(t.total),sub:`net revenue ${money0(t.net)}`},
+    {cls:'',ic:ICO.layers,pill:um?`${pct2(um.tax)} TAX`:'imposto',pcls:'y',lbl:'Impostos',
+     val:money0(t.imp),sub:'sobre a receita bruta'},
+    {cls:'',ic:ICO.chart,pill:`${pct(t.net?t.costs/t.net:null)} do net`,pcls:'n',lbl:'Costs totais',
+     val:money0(t.costs),sub:um&&um.meses?`${money0(um.costsMensais)}/mês · ${um.meses} meses`:'soma das 14 caixinhas'}
+  ];
+  el('kpiRow').innerHTML=cards.map(c=>`
+    <div class="kpi ${c.cls}">
+      <div class="r1"><div class="ic">${svg(c.ic)}</div><span class="pill ${c.pcls}">${c.pill}</span></div>
+      <div class="lbl">${c.lbl}</div><div class="val">${c.val}</div><div class="sub">${c.sub}</div>
+    </div>`).join('');
+}
+
+const TABS=[
+  {k:'gerencial', n:'Gerencial',  i:ICO.sheet},
+  {k:'caixinhas', n:'Caixinhas',  i:ICO.grid},
+  {k:'metricas',  n:'Métricas',   i:ICO.chart},
+  {k:'clientes',  n:'Clientes',   i:ICO.users}
+];
+function renderTabs(){
+  el('mainTabs').innerHTML=TABS.map(t=>
+    `<div class="t ${TAB===t.k?'on':''}" data-t="${t.k}">${svg(t.i)}${t.n}</div>`).join('');
+  el('mainTabs').querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>{TAB=b.dataset.t;DRILL=null;render();});
+}
+
+function escalaHTML(){
+  return `<div class="filters" style="justify-content:flex-end">
+    <span class="muted" style="font-size:12.5px;font-weight:500;margin-right:auto">Exibindo ${sLbl()}</span>
+    <div class="seg">
+      <div class="s ${ESCALA==='total'?'on':''}" data-esc="total">Total do contrato</div>
+      <div class="s ${ESCALA==='mes'?'on':''}" data-esc="mes">Por mês</div>
+    </div></div>`;
+}
+function bindEscala(){
+  document.querySelectorAll('[data-esc]').forEach(b=>b.onclick=()=>{ESCALA=b.dataset.esc;render();});
+}
+
+function renderTabBody(rs){
+  const b=el('tabBody');
+  if(DRILL){ b.innerHTML=viewDrill(rs); }
+  else if(TAB==='gerencial')  b.innerHTML=escalaHTML()+viewGerencial(rs);
+  else if(TAB==='caixinhas')  b.innerHTML=escalaHTML()+viewCaixinhas(rs);
+  else if(TAB==='metricas')   b.innerHTML=viewMetricas(rs);
+  else                        b.innerHTML=viewClientes(rs);
+  bindEscala();
+  document.querySelectorAll('[data-caixa]').forEach(e=>e.onclick=()=>{DRILL=e.dataset.caixa;render();});
+  document.querySelectorAll('[data-back]').forEach(e=>e.onclick=()=>{DRILL=null;render();});
+  document.querySelectorAll('th[data-sort]').forEach(h=>h.onclick=()=>{
+    const c=h.dataset.sort; if(SORT.col===c) SORT.dir*=-1; else {SORT.col=c;SORT.dir=-1;} render();});
+  if(!DRILL && TAB==='metricas'){ drawPilar(rs); drawCaixas(rs); }
+  bindOpen(b);
+}
+
+/* ---------- ABA GERENCIAL — todas as colunas do dashboard ---------- */
+function sortRows(rs){
+  const c=SORT.col,d=SORT.dir;
+  return [...rs].sort((a,b)=>{
+    let x=a[c],y=b[c];
+    if(c.startsWith('cx:')){ const k=c.slice(3); x=a.caixas[k]; y=b.caixas[k]; }
+    if(typeof x==='string'||typeof y==='string') return String(x||'').localeCompare(String(y||''))*d;
+    return (((x??-1e15)-(y??-1e15))>0?1:-1)*d;
+  });
+}
+const thS=(col,label,cls,title)=>
+  `<th class="${cls||''}" data-sort="${col}"${title?` title="${esc(title)}"`:''}>${label}${SORT.col===col?(SORT.dir>0?' ↑':' ↓'):''}</th>`;
+
+function viewGerencial(rs){
+  const ord=sortRows(rs), t=totais(rs);
+  const m=r=>r.meses;
+  const cell=(v,meses)=>{const x=sc(v,meses); return x==null?'<span class="zero">—</span>':money0(x);};
+  const cxHead=CAIXAS.map(c=>
+    `<th class="num cx" data-caixa="${c.k}" title="Coluna &quot;${esc(c.col)}&quot; do dashboard — clique para abrir">
+       <span style="border-bottom:2px solid ${CX_COLOR[c.k]};padding-bottom:2px">${c.n}</span></th>`).join('');
+  return `<div class="card">
+    <div class="card-h"><h3>Dashboard gerencial das MCs importadas</h3>
+      <p>mesmas colunas do DASHBOARD_GERENCIAL_CONTRATOS, alimentadas pelas MCs — clique numa caixinha no cabeçalho para abrir as linhas</p></div>
+    <div class="card-b flush"><div class="tbl-wrap"><table class="wide">
+    <thead><tr>
+      ${thS('contrato','ID')}${thS('projeto','Contratos')}${thS('cliente','Cliente')}
+      ${thS('responsavel','Responsável')}${thS('produto','Produto')}
+      <th>Comentários</th>${thS('inicio','Início')}${thS('fim','Fim')}${thS('meses','Vigência','num')}
+      ${thS('total','Total contrato','num')}${thS('mensal','Valor mensal','num')}${thS('fat','% FAT','num')}
+      ${thS('tax','TAX','num')}${thS('imp','IMP','num')}${thS('net','Net revenue','num')}
+      ${thS('costsTotais','Costs totais','num')}${thS('costsMensais','Costs mensais','num')}
+      ${cxHead}
+      ${thS('dm','DM','num')}${thS('dmPct','%','num')}
+      ${thS('rateios','Rateios','num')}${thS('mcDireta','MC direta','num')}${thS('mcDiretaPct','MC dir. %','num')}
+      <th>Status</th></tr></thead>
+    <tbody>${ord.map(r=>`<tr class="clickable" data-open="${esc(r.id)}">
+      <td class="mono"><b>${esc(r.contrato||'—')}</b></td>
+      <td style="max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.projeto)}</td>
+      <td>${esc(r.cliente)}</td>
+      <td>${esc(r.responsavel)||'<span class="zero">—</span>'}</td>
+      <td>${esc(r.produto)||'<span class="zero">—</span>'}</td>
+      <td class="muted" style="max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.comentarios)||'—'}</td>
+      <td class="mono">${esc(r.inicio)||'<span class="zero">—</span>'}</td>
+      <td class="mono">${esc(r.fim)||'<span class="zero">—</span>'}</td>
+      <td class="num mono">${r.meses?r.meses:'<span class="zero">—</span>'}</td>
+      <td class="num mono"><b>${money0(r.total)}</b></td>
+      <td class="num mono">${r.mensal==null?'<span class="zero">—</span>':money0(r.mensal)}</td>
+      <td class="num mono">${r.fat==null?'<span class="zero">—</span>':money0(r.fat)}</td>
+      <td class="num mono">${pct2(r.tax)}</td>
+      <td class="num mono">${cell(r.imp,m(r))}</td>
+      <td class="num mono">${cell(r.net,m(r))}</td>
+      <td class="num mono">${cell(r.costsTotais,m(r))}</td>
+      <td class="num mono">${r.costsMensais==null?'<span class="zero">—</span>':money0(r.costsMensais)}</td>
+      ${CAIXAS.map(c=>`<td class="num mono ${r.caixas[c.k]?'':'zero'} ${c.k==='nao'&&r.caixas[c.k]?'nao-map':''}">${r.caixas[c.k]?money0(sc(r.caixas[c.k],m(r))):'—'}</td>`).join('')}
+      <td class="num mono"><b>${cell(r.dm,m(r))}</b></td>
+      <td class="num mono"><b>${pct(r.dmPct)}</b></td>
+      <td class="num mono">${cell(r.rateios,m(r))}</td>
+      <td class="num mono">${cell(r.mcDireta,m(r))}</td>
+      <td class="num mono">${pct(r.mcDiretaPct)}</td>
+      <td>${r.alerta?'<span class="badge warn">revisar</span>':'<span class="badge ok">ok</span>'}</td>
+    </tr>`).join('')}</tbody>
+    <tfoot><tr><td colspan="9">Total · ${ord.length} contrato${ord.length>1?'s':''}</td>
+      <td class="num mono">${money0(t.total)}</td><td colspan="3"></td>
+      <td class="num mono">${money0(t.imp)}</td><td class="num mono">${money0(t.net)}</td>
+      <td class="num mono">${money0(t.costs)}</td><td></td>
+      ${CAIXAS.map(c=>`<td class="num mono ${t.caixas[c.k]?'':'zero'}">${t.caixas[c.k]?money0(t.caixas[c.k]):'—'}</td>`).join('')}
+      <td class="num mono">${money0(t.dm)}</td><td class="num mono">${pct(t.dmPct)}</td>
+      <td class="num mono">${money0(t.rateios)}</td><td class="num mono">${money0(t.mcd)}</td>
+      <td class="num mono">${pct(t.mcdPct)}</td><td></td></tr></tfoot>
+    </table></div></div></div>
+    <p class="muted" style="font-size:12px;margin-top:10px">
+      DM = Net revenue − Costs totais, e % = DM / Net revenue — a mesma conta do dashboard, e igual à MC do projeto antes de rateios.
+      As colunas <b>Rateios</b>, <b>MC direta</b> e <b>MC dir. %</b> não existem no dashboard: vêm do 5.DRE da MC.</p>`;
+}
+
+/* ---------- ABA CAIXINHAS ---------- */
+function viewCaixinhas(rs){
+  const t=totais(rs);
+  const tot=CAIXAS.reduce((a,c)=>a+t.caixas[c.k],0)||1;
+  const um = rs.length===1?rs[0]:null;
+  const val=k=> um ? sc(t.caixas[k],um.meses) : (ESCALA==='mes'
+      ? rs.reduce((a,r)=>a+(r.meses?(r.caixas[k]||0)/r.meses:0),0) : t.caixas[k]);
+  const ord=[...CAIXAS].sort((a,b)=>t.caixas[b.k]-t.caixas[a.k]);
+  return `<div class="cx-grid">
+    ${ord.map(c=>{
+      const v=val(c.k), share=t.caixas[c.k]/tot;
+      return `<div class="cx ${c.k==='nao'?'nao':''} ${t.caixas[c.k]?'':'off'}" data-caixa="${c.k}" style="--c:${CX_COLOR[c.k]}">
+        <div class="cx-t"><span class="cx-n">${c.n}</span><span class="cx-p">${pct(share)}</span></div>
+        <div class="cx-v">${v==null?'—':money0(v)}</div>
+        <div class="bar-track"><div class="bar-fill" style="width:${(share*100).toFixed(1)}%;background:${CX_COLOR[c.k]}"></div></div>
+        <div class="cx-s">${c.k==='nao'?'linhas sem caixinha definida':'coluna '+esc(c.col)} →</div>
+      </div>`;}).join('')}
+  </div>
+  <p class="muted" style="font-size:12.5px;margin-top:14px">
+    Clique em qualquer caixinha para abrir as linhas que a compõem, com a aba de origem da planilha de MC.
+    ${FILTRO.mc?'Filtrado em <b>uma MC</b> — vai abrir só as linhas dela.':'Sem MC selecionada — vai abrir o consolidado de todas, com quebra por contrato.'}</p>`;
+}
+
+/* ---------- DRILL-DOWN de uma caixinha ---------- */
+function viewDrill(rs){
+  const c=CAIXA_BY_K[DRILL];
+  const mcs=filtradas();
+  let linhas=[];
+  mcs.forEach(mc=>linhas.push(...linhasClassificadas(mc).filter(l=>l.caixa===DRILL)));
+  const tot=linhas.reduce((a,l)=>a+l.total,0);
+  const soMC = mcs.length===1 ? mcs[0] : null;
+
+  /* agrupamento por aba de origem */
+  const porAba={};
+  linhas.forEach(l=>{ porAba[l.aba]=porAba[l.aba]||{n:0,v:0,pilar:l.pilar}; porAba[l.aba].n++; porAba[l.aba].v+=l.total; });
+
+  /* quebra por contrato quando é consolidado */
+  const porMC={};
+  linhas.forEach(l=>{ const k=l.contrato||l.projeto; porMC[k]=porMC[k]||{n:0,v:0,projeto:l.projeto,id:l.mcId}; porMC[k].n++; porMC[k].v+=l.total; });
+
+  let h=`<button class="btn ghost sm" data-back="1" style="margin-bottom:16px">← Voltar para as caixinhas</button>
+  <div class="sect-h" style="margin-bottom:16px">
+    <div><h1 style="font-size:21px;display:flex;align-items:center;gap:10px">
+      <span style="width:12px;height:12px;border-radius:4px;background:${CX_COLOR[DRILL]};display:inline-block"></span>${c.n}</h1>
+      <p class="muted" style="font-size:13px;margin-top:4px">
+        ${c.k==='nao'?'Linhas que não encaixaram em nenhuma caixinha — revisar o de-para'
+          :`Coluna <b>${esc(c.col)}</b> do dashboard gerencial`}
+        · ${linhas.length} linha${linhas.length>1?'s':''} · ${soMC?esc(soMC.contrato||soMC.projeto):`${mcs.length} MCs`}</p></div>
+    <div class="sp"></div>
+    <div style="text-align:right"><div class="lbl muted" style="font-size:10.5px;font-weight:600;letter-spacing:.8px;text-transform:uppercase">Custo total</div>
+      <div style="font-size:24px;font-weight:700;letter-spacing:-.8px">${money(tot)}</div></div>
+  </div>`;
+
+  if(!linhas.length) return h+`<div class="card"><div class="card-b muted">Nenhuma linha nesta caixinha para o filtro atual.</div></div>`;
+
+  h+=`<div class="pilares" style="margin-bottom:16px">
+    ${Object.entries(porAba).sort((a,b)=>b[1].v-a[1].v).map(([aba,v])=>`
+      <div class="pilar" style="--c:${CX_COLOR[DRILL]}">
+        <div class="tp"><div class="nm">${esc(aba)}</div><div class="pc">${pct(tot?v.v/tot:0)}</div></div>
+        <div class="vl">${money0(v.v)}</div>
+        <div class="bar-track"><div class="bar-fill" style="width:${tot?(v.v/tot*100).toFixed(1):0}%"></div></div>
+        <div class="muted" style="font-size:11.5px;margin-top:8px">${v.n} linha(s) · ${esc(v.pilar)}</div>
+      </div>`).join('')}
+  </div>`;
+
+  if(!soMC){
+    h+=`<div class="card" style="margin-bottom:16px">
+      <div class="card-h"><h3>Por contrato</h3><p>quanto cada MC contribui nesta caixinha</p></div>
+      <div class="card-b flush"><div class="tbl-wrap"><table>
+      <thead><tr><th>Contrato</th><th>Projeto</th><th class="num">Linhas</th><th class="num">Custo</th>
+        <th class="num">% da caixinha</th><th style="width:150px"></th></tr></thead>
+      <tbody>${Object.entries(porMC).sort((a,b)=>b[1].v-a[1].v).map(([k,v])=>`
+        <tr class="clickable" data-open="${esc(v.id)}"><td class="mono"><b>${esc(k)}</b></td>
+        <td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(v.projeto)}</td>
+        <td class="num mono">${v.n}</td><td class="num mono">${money(v.v)}</td>
+        <td class="num mono">${pct(tot?v.v/tot:0)}</td>
+        <td><div class="bar-track"><div class="bar-fill" style="width:${tot?(v.v/tot*100).toFixed(1):0}%;background:${CX_COLOR[DRILL]}"></div></div></td>
+      </tr>`).join('')}</tbody></table></div></div></div>`;
+  }
+
+  h+=`<div class="card">
+    <div class="card-h"><h3>Linhas da planilha</h3><p>cada linha com a aba de origem, exatamente como está na MC</p></div>
+    <div class="card-b flush"><div class="tbl-wrap"><table>
+    <thead><tr>${soMC?'':'<th>Contrato</th>'}<th>Aba de origem</th><th class="num">#</th>
+      <th>Categoria</th><th>Descrição</th><th>Detalhe</th>
+      <th class="num">Meses</th><th class="num">Qtde</th><th class="num">Vlr unit.</th>
+      <th class="num">Custo final</th><th class="num">% da caixinha</th></tr></thead>
+    <tbody>${linhas.sort((a,b)=>b.total-a.total).map(l=>`<tr>
+      ${soMC?'':`<td class="mono">${esc(l.contrato||'—')}</td>`}
+      <td><span class="aba">${esc(l.aba)}</span></td>
+      <td class="num mono muted">${l.idx}</td>
+      <td><b>${esc(l.cat)||'<span class="zero">—</span>'}</b></td>
+      <td style="max-width:300px">${esc(l.desc)||'<span class="zero">—</span>'}</td>
+      <td class="muted" style="font-size:12px;max-width:190px">${esc(l.extra)}</td>
+      <td class="num mono ${l.meses?'':'zero'}">${l.hm?(l.meses?qty(l.meses):'0'):'—'}</td>
+      <td class="num mono ${l.qtd?'':'zero'}">${qty(l.qtd)}</td>
+      <td class="num mono ${l.unit?'':'zero'}">${money(l.unit)}</td>
+      <td class="num mono ${l.total?'':'zero'}"><b>${money(l.total)}</b></td>
+      <td class="num mono muted">${tot?pct(l.total/tot):'—'}</td></tr>`).join('')}</tbody>
+    <tfoot><tr><td colspan="${soMC?8:9}">Total ${c.n}</td>
+      <td class="num mono">${money(tot)}</td><td></td></tr></tfoot>
+    </table></div></div></div>`;
+  return h;
+}
+
+/* ---------- ABA MÉTRICAS ---------- */
+function viewMetricas(rs){
+  const t=totais(rs);
+  const pil={}; PILARES.forEach(p=>pil[p.k]=0);
+  filtradas().forEach(m=>PILARES.forEach(p=>pil[p.k]+=m.somas[p.k]||0));
+  const totP=PILARES.reduce((a,p)=>a+pil[p.k],0)||1;
+  const ord=[...rs].sort((a,b)=>(b.dmPct??-9)-(a.dmPct??-9));
+  const vals=ord.map(r=>r.dmPct||0);
+  const max=Math.max(...vals,0.01),min=Math.min(...vals,0),span=(max-min)||1;
+  return `
+  <div class="pilares" style="margin-bottom:16px">
+    ${PILARES.map(p=>`<div class="pilar ${p.cls}">
+      <div class="tp"><div class="nm">${p.n}</div><div class="pc">${pct(pil[p.k]/totP)}</div></div>
+      <div class="vl">${money0(pil[p.k])}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${(pil[p.k]/totP*100).toFixed(1)}%"></div></div>
+    </div>`).join('')}
+  </div>
+  <div class="g2">
+    <div class="card"><div class="card-h"><h3>Custo por pilar da MC</h3><p>as 4 abas de levantamento</p></div>
+      <div class="card-b"><div class="chart-box"><canvas id="chPilar"></canvas></div></div></div>
+    <div class="card"><div class="card-h"><h3>Ranking de margem</h3><p>DM %, do melhor para o pior — clique para abrir</p></div>
+      <div class="card-b" style="max-height:300px;overflow-y:auto">
+      ${ord.map((r,i)=>`<div class="rank-row" data-open="${esc(r.id)}">
+        <div class="nm">${i+1}. ${esc(r.projeto)}<small>${esc(r.contrato||'—')} · ${esc(r.cliente)}</small></div>
+        <div class="bar-track"><div class="bar-fill" style="width:${Math.max(4,((r.dmPct-min)/span)*100)}%"></div></div>
+        <div class="pc">${pct(r.dmPct)}</div></div>`).join('')}</div></div>
+  </div>
+  <div class="card" style="margin-top:16px">
+    <div class="card-h"><h3>Custo por caixinha do dashboard</h3><p>clique numa barra para abrir as linhas</p></div>
+    <div class="card-b"><div class="chart-box" style="height:340px"><canvas id="chCaixas"></canvas></div></div></div>`;
+}
+let chP=null,chC=null;
+const cFont=()=>({family:'Inter',size:11.5});
+const cGrid=()=>getComputedStyle(document.documentElement).getPropertyValue('--line').trim();
+const cTx=()=>getComputedStyle(document.documentElement).getPropertyValue('--mut').trim();
+
+function drawPilar(){
+  const c=el('chPilar'); if(!c) return;
+  const pil={}; PILARES.forEach(p=>pil[p.k]=0);
+  filtradas().forEach(m=>PILARES.forEach(p=>pil[p.k]+=m.somas[p.k]||0));
+  if(chP) chP.destroy();
+  chP=new Chart(c,{type:'doughnut',
+    data:{labels:PILARES.map(p=>p.n),datasets:[{data:PILARES.map(p=>pil[p.k]),
+      backgroundColor:PILARES.map(p=>p.color),borderWidth:0,hoverOffset:10,spacing:2,borderRadius:6}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'62%',
+      plugins:{legend:{position:'right',labels:{color:cTx(),font:cFont(),boxWidth:10,boxHeight:10,padding:14,usePointStyle:true,pointStyle:'circle'}},
+        tooltip:{callbacks:{label:x=>{const s=x.dataset.data.reduce((a,b)=>a+b,0);
+          return ` ${x.label}: ${money(x.raw)} (${s?pct(x.raw/s):'—'})`;}}}}}});
+}
+function drawCaixas(rs){
+  const c=el('chCaixas'); if(!c) return;
+  const t=totais(rs);
+  const ord=[...CAIXAS].filter(x=>t.caixas[x.k]).sort((a,b)=>t.caixas[b.k]-t.caixas[a.k]);
+  if(chC) chC.destroy();
+  chC=new Chart(c,{type:'bar',
+    data:{labels:ord.map(x=>x.n),datasets:[{label:'Custo',data:ord.map(x=>t.caixas[x.k]),
+      backgroundColor:ord.map(x=>CX_COLOR[x.k]),borderRadius:6,borderSkipped:false}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+      onClick:(e,a)=>{ if(a.length){ DRILL=ord[a[0].index].k; render(); } },
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:x=>` ${money(x.raw)}`}}},
+      scales:{x:{grid:{color:cGrid()},border:{display:false},ticks:{color:cTx(),font:cFont(),callback:v=>money0(v)}},
+        y:{grid:{display:false},border:{display:false},ticks:{color:cTx(),font:cFont()}}}}});
+}
+
+/* ---------- ABA CLIENTES ---------- */
+function viewClientes(rs){
+  const by={};
+  rs.forEach(r=>{ const k=r.cliente;
+    by[k]=by[k]||{n:0,total:0,net:0,costs:0,dm:0,mcd:0};
+    by[k].n++; by[k].total+=r.total; by[k].net+=r.net; by[k].costs+=r.costsTotais;
+    by[k].dm+=r.dm; by[k].mcd+=r.mcDireta; });
+  const ord=Object.entries(by).sort((a,b)=>b[1].total-a[1].total);
+  const maxR=Math.max(...ord.map(([,v])=>v.total),1);
+  return `<div class="card"><div class="card-h"><h3>Carteira por cliente</h3><p>receita e margem consolidadas</p></div>
+    <div class="card-b flush"><div class="tbl-wrap"><table>
+    <thead><tr><th>Cliente</th><th class="num">Contratos</th><th class="num">Total contrato</th>
+      <th class="num">Net revenue</th><th class="num">Costs</th><th class="num">DM</th>
+      <th class="num">%</th><th class="num">MC direta %</th><th style="width:150px">Participação</th></tr></thead>
+    <tbody>${ord.map(([k,v])=>`<tr><td><b>${esc(k)}</b></td><td class="num mono">${v.n}</td>
+      <td class="num mono">${money0(v.total)}</td><td class="num mono">${money0(v.net)}</td>
+      <td class="num mono">${money0(v.costs)}</td><td class="num mono">${money0(v.dm)}</td>
+      <td class="num mono"><b>${pct(v.net?v.dm/v.net:null)}</b></td>
+      <td class="num mono">${pct(v.net?v.mcd/v.net:null)}</td>
+      <td><div class="bar-track"><div class="bar-fill" style="width:${(v.total/maxR*100).toFixed(1)}%"></div></div></td>
+    </tr>`).join('')}</tbody></table></div></div></div>`;
+}
+
+function bindOpen(root){ root.querySelectorAll('[data-open]').forEach(e=>e.onclick=ev=>{
+  ev.stopPropagation(); openDetalhe(e.dataset.open); }); }
+
+/* ============================================================
+   DETALHE DA MC
+   ============================================================ */
+let SIM=null;
+function openDetalhe(id){
+  const mc=MCS.find(m=>m.id===id); if(!mc) return;
+  SIM=null;
+  el('viewCarteira').classList.add('hide');
+  el('viewDetalhe').classList.remove('hide');
+  window.scrollTo(0,0);
+  renderDetalhe(mc,'resumo');
+}
+function voltar(){
+  el('viewDetalhe').classList.add('hide');
+  el('viewCarteira').classList.remove('hide');
+  render();
+}
+const DTABS=[['resumo','Resumo / DRE'],['caixas','Caixinhas'],['equipe','Equipe'],['campo','Suporte de Campo'],
+  ['log','Equip./Logística'],['invest','Investimentos'],['audit','Auditoria'],['sim','Simulador']];
+
+function renderDetalhe(mc,tab){
+  const alerta=mc.divergencias.length||mc.linhasForaDaConta.length;
+  el('viewDetalhe').innerHTML=`
+    <button class="btn ghost sm" id="btnVoltar" style="margin-bottom:16px">← Voltar</button>
+    <div class="sect-h" style="margin-bottom:18px">
+      <div><h1 style="font-size:21px">${esc(mc.projeto)}</h1>
+        <p class="muted" style="font-size:13px;margin-top:4px"><b>${esc(mc.contrato||'sem contrato')}</b> · ${esc(mc.cliente)}${mc.mesesContrato?` · ${mc.mesesContrato} meses`:''}${mc.inicio?` · ${esc(mc.inicio)}${mc.fim?' a '+esc(mc.fim):''}`:''}
+        <br><span style="opacity:.75">${esc(mc.arquivo)}</span></p></div>
+      <div class="sp"></div>
+      <button class="btn danger sm" id="btnRemover">Remover do painel</button>
+    </div>
+    <div class="kpis">
+      <div class="kpi hi"><div class="r1"><div class="ic">${svg(ICO.pct)}</div><span class="pill">DM / net revenue</span></div>
+        <div class="lbl">Margem de contribuição</div><div class="val">${pct(mc.mcProjetoPct)}</div><div class="sub">${money(mc.mcProjeto)}</div></div>
+      <div class="kpi c3"><div class="r1"><div class="ic">${svg(ICO.mc)}</div><span class="pill">após rateios</span></div>
+        <div class="lbl">MC direta Faiston</div><div class="val">${pct(mc.mcDiretaPct)}</div><div class="sub">${money(mc.mcDireta)}</div></div>
+      <div class="kpi c2"><div class="r1"><div class="ic">${svg(ICO.cash)}</div><span class="pill n">${pct2(mc.impostoFator)} TAX</span></div>
+        <div class="lbl">Total contrato</div><div class="val">${money0(mc.receita)}</div><div class="sub">net ${money0(mc.receitaLiq)}</div></div>
+      <div class="kpi"><div class="r1"><div class="ic">${svg(ICO.chart)}</div><span class="pill ${alerta?'y':'g'}">${alerta?'revisar':'confere'}</span></div>
+        <div class="lbl">Costs totais</div><div class="val">${money0(mc.custo)}</div>
+        <div class="sub">${PILARES.reduce((a,p)=>a+mc.blocos[p.k].rows.length,0)} linhas na planilha</div></div>
+    </div>
+    <div class="dtabs" id="dTabs">${DTABS.map(([k,n])=>
+      `<div class="dtab ${tab===k?'on':''}" data-tab="${k}">${n}${k==='audit'&&alerta?'<span class="dot"></span>':''}</div>`).join('')}</div>
+    <div id="dBody"></div>`;
+  el('btnVoltar').onclick=voltar;
+  el('btnRemover').onclick=async ()=>{ if(confirm('Remover esta MC do painel? O arquivo original não é afetado.')){
+    try{ await fetch(`/api/mcs/${encodeURIComponent(mc.id)}`,{method:'DELETE',credentials:'include'}); }catch(e){}
+    await loadMCs(); voltar(); } };
+  el('dTabs').querySelectorAll('[data-tab]').forEach(t=>t.onclick=()=>renderDetalhe(mc,t.dataset.tab));
+  const b=el('dBody');
+  if(tab==='resumo') b.innerHTML=tabResumo(mc);
+  else if(tab==='caixas') b.innerHTML=tabCaixas(mc);
+  else if(tab==='audit') b.innerHTML=tabAuditoria(mc);
+  else if(tab==='sim'){ b.innerHTML=tabSimulador(mc); bindSim(mc); }
+  else b.innerHTML=tabPilar(mc,tab);
+  b.querySelectorAll('[data-gocaixa]').forEach(e=>e.onclick=()=>{
+    FILTRO.mc=mc.id; DRILL=e.dataset.gocaixa; TAB='caixinhas'; voltar(); });
+}
+
+function tabCaixas(mc){
+  const s=somaCaixas(mc);
+  const tot=CAIXAS.reduce((a,c)=>a+s[c.k],0)||1;
+  const ms=mc.mesesContrato;
+  const ord=[...CAIXAS].sort((a,b)=>s[b.k]-s[a.k]);
+  return `<p class="sim-note">As 14 colunas de custo do dashboard gerencial montadas a partir desta MC.
+    Clique numa caixinha para abrir as linhas que a compõem.</p>
+  <div class="cx-grid">${ord.map(c=>`
+    <div class="cx ${c.k==='nao'?'nao':''} ${s[c.k]?'':'off'}" data-gocaixa="${c.k}" style="--c:${CX_COLOR[c.k]}">
+      <div class="cx-t"><span class="cx-n">${c.n}</span><span class="cx-p">${pct(s[c.k]/tot)}</span></div>
+      <div class="cx-v">${money0(s[c.k])}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${(s[c.k]/tot*100).toFixed(1)}%;background:${CX_COLOR[c.k]}"></div></div>
+      <div class="cx-s">${ms?money0(s[c.k]/ms)+'/mês':'coluna '+esc(c.col)} →</div>
+    </div>`).join('')}</div>
+  <div class="${s.nao?'err':'ok-box'}" style="margin-top:16px">
+    ${s.nao?`<b>${money(s.nao)}</b> em linhas que não encaixaram em nenhuma caixinha — abra "Não mapeado" para revisar o de-para.`
+      :'Todas as linhas desta MC caíram numa caixinha do dashboard.'}</div>`;
+}
+
+function tabResumo(mc){
+  const l=(sig,label,val,pc,cls)=>`<div class="dre-l ${cls||''}"><div class="sig">${sig}</div><div>${label}</div>
+    <div class="vl">${money(val)}</div><div class="pcv">${pc||''}</div></div>`;
+  const sub=(label,val,pc)=>`<div class="dre-sub"><div>${label}</div><div class="vl">${money(val)}</div><div class="pcv">${pc||''}</div></div>`;
+  const rl=mc.receitaLiq||1,ct=mc.custo||1;
+  let h=`<div class="g2"><div class="card">
+    <div class="card-h"><h3>Demonstrativo do projeto</h3><p>percentuais sobre a receita líquida</p></div>
+    <div class="card-b"><div class="dre">
+      ${l('','1. Receita bruta',mc.receita,'','head')}
+      ${l('−',`2. Impostos (${pct2(mc.impostoFator)})`,mc.impostos,pct(mc.impostos/rl),'minus')}
+      ${l('=','Receita líquida / net revenue',mc.receitaLiq,'100,0%','head')}
+      ${l('−','3. Custos diretos',mc.custo,pct(mc.custo/rl),'minus')}`;
+  PILARES.forEach(p=>h+=sub(p.n,mc.somas[p.k],pct(mc.somas[p.k]/rl)));
+  h+=`${l('=','4. Margem de contribuição do projeto (DM)',mc.mcProjeto,pct(mc.mcProjetoPct),'result')}
+      ${l('−','5. Rateios',mc.rateioTot,pct(mc.rateioTot/rl),'minus')}`;
+  (mc.rateioVals||[]).forEach(r=>h+=sub(`${r.nome} (${pct2(r.p)})`,r.valor,pct(r.valor/rl)));
+  h+=`${l('=','6. Margem de contribuição direta Faiston',mc.mcDireta,pct(mc.mcDiretaPct),'result2')}
+    </div></div></div>
+    <div><div class="card" style="margin-bottom:16px">
+      <div class="card-h"><h3>Peso de cada pilar no custo</h3><p>as 4 abas de levantamento</p></div>
+      <div class="card-b"><div class="pilares" style="grid-template-columns:1fr 1fr">`;
+  PILARES.forEach(p=>{
+    const v=mc.somas[p.k]||0;
+    h+=`<div class="pilar ${p.cls}" style="box-shadow:none">
+      <div class="tp"><div class="nm">${p.n}</div><div class="pc">${pct(v/ct)}</div></div>
+      <div class="vl">${money0(v)}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${(v/ct*100).toFixed(1)}%"></div></div>
+      <div class="muted" style="font-size:11.5px;margin-top:8px">${mc.blocos[p.k].rows.length} linha(s)</div></div>`;
+  });
+  h+=`</div></div></div>`;
+  if(mc.dre.found){
+    const ok=!mc.divergencias.length;
+    h+=`<div class="${ok?'ok-box':'err'}">${ok?'As linhas das abas 2.1 a 2.4 batem com o 5.DRE da planilha.'
+      :`${mc.divergencias.length} pilar(es) divergem do 5.DRE — veja a aba Auditoria.`}</div>`;
+  } else h+=`<div class="err">Esta planilha não tem a aba 5.DRE. Os números vieram das linhas, dos impostos e dos rateios.</div>`;
+  h+=`</div></div>`;
+  return h;
+}
+
+function tabPilar(mc,k){
+  const p=PILARES.find(x=>x.k===k), rows=mc.blocos[k].rows||[];
+  if(!rows.length) return `<div class="card"><div class="card-b muted">Nenhuma linha preenchida em <b>${p.n}</b> nesta MC.</div></div>`;
+  const tot=rows.reduce((a,r)=>a+r.total,0);
+  const byCat={}; rows.forEach(r=>{const c=r.cat||'(sem categoria)'; byCat[c]=(byCat[c]||0)+r.total;});
+  return `<div class="muted" style="font-size:12.5px;margin-bottom:14px">Aba <b>${esc(mc.blocos[k].sheet||'')}</b> da planilha</div>
+  <div class="pilares" style="margin-bottom:16px">
+    ${Object.entries(byCat).sort((a,b)=>b[1]-a[1]).map(([c,v])=>`
+      <div class="pilar ${p.cls}"><div class="tp"><div class="nm">${esc(c)}</div><div class="pc">${pct(tot?v/tot:0)}</div></div>
+      <div class="vl">${money0(v)}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${tot?(v/tot*100).toFixed(1):0}%"></div></div></div>`).join('')}
+  </div>
+  <div class="card"><div class="card-b flush"><div class="tbl-wrap"><table>
+    <thead><tr><th>#</th><th>Caixinha</th><th>Categoria</th><th>Descrição</th><th>Detalhe</th>
+      <th class="num">Meses</th><th class="num">Qtde</th><th class="num">Vlr unit.</th>
+      <th class="num">Custo final</th><th class="num">% do pilar</th></tr></thead>
+    <tbody>${rows.map((r,i)=>{const cx=classificar(k,r);return `<tr>
+      <td class="mono muted">${i+1}</td>
+      <td><span class="aba" data-gocaixa="${cx}" style="cursor:pointer;border-color:${CX_COLOR[cx]};color:${CX_COLOR[cx]}">${CAIXA_BY_K[cx].n}</span></td>
+      <td><b>${esc(r.cat)||'<span class="zero">—</span>'}</b></td>
+      <td style="max-width:300px">${esc(r.desc)||'<span class="zero">—</span>'}</td>
+      <td class="muted" style="font-size:12px;max-width:200px">${esc(r.extra)}</td>
+      <td class="num mono ${r.meses?'':'zero'}">${r.hm?(r.meses?qty(r.meses):'0'):'—'}</td>
+      <td class="num mono ${r.qtd?'':'zero'}">${qty(r.qtd)}</td>
+      <td class="num mono ${r.unit?'':'zero'}">${money(r.unit)}</td>
+      <td class="num mono ${r.total?'':'zero'}"><b>${money(r.total)}</b></td>
+      <td class="num mono muted">${tot?pct(r.total/tot):'—'}</td></tr>`}).join('')}</tbody>
+    <tfoot><tr><td colspan="8">Total ${p.n}</td><td class="num mono">${money(tot)}</td><td></td></tr></tfoot>
+  </table></div></div></div>`;
+}
+
+function tabAuditoria(mc){
+  let h='';
+  if(!mc.dre.found) h+=`<div class="err">Planilha sem aba 5.DRE — não dá para conferir as linhas contra o demonstrativo.</div>`;
+  h+=`<div class="card" style="margin-bottom:16px">
+    <div class="card-h"><h3>Soma das linhas × 5.DRE</h3><p>se divergir, alguém digitou por cima ou a fórmula quebrou</p></div>
+    <div class="card-b flush"><div class="tbl-wrap"><table>
+    <thead><tr><th>Pilar</th><th class="num">Soma das linhas</th><th class="num">5.DRE</th><th class="num">Diferença</th><th>Status</th></tr></thead>
+    <tbody>${PILARES.map(p=>{
+      const s=mc.somas[p.k]||0,d=mc.dre.found?mc.dre.pilar[p.k]:null,dif=d==null?null:s-d;
+      return `<tr><td><b>${p.n}</b></td><td class="num mono">${money(s)}</td>
+        <td class="num mono">${d==null?'—':money(d)}</td>
+        <td class="num mono ${dif&&Math.abs(dif)>0.05?'delta-dn':''}">${dif==null?'—':money(dif)}</td>
+        <td>${dif==null?'<span class="badge neutral">sem DRE</span>':(Math.abs(dif)<=0.05?'<span class="badge ok">bate</span>':'<span class="badge warn">diverge</span>')}</td></tr>`;
+    }).join('')}</tbody>
+    <tfoot><tr><td>Custo total</td><td class="num mono">${money(mc.custoLinhas)}</td>
+      <td class="num mono">${mc.custoDRE==null?'—':money(mc.custoDRE)}</td>
+      <td class="num mono">${mc.custoDRE==null?'—':money(mc.custoLinhas-mc.custoDRE)}</td><td></td></tr></tfoot>
+    </table></div></div></div>
+  <div class="card">
+    <div class="card-h"><h3>Linhas onde qtde × valor × meses ≠ custo final</h3><p>fórmula quebrada, célula travada ou valor digitado por cima</p></div>
+    <div class="card-b${mc.linhasForaDaConta.length?' flush':''}">`;
+  if(!mc.linhasForaDaConta.length)
+    h+=`<div class="ok-box">Todas as ${PILARES.reduce((a,p)=>a+mc.blocos[p.k].rows.length,0)} linhas fecham com a própria fórmula.</div>`;
+  else h+=`<div class="tbl-wrap"><table>
+      <thead><tr><th>Pilar</th><th class="num">Linha</th><th>Descrição</th>
+        <th class="num">Recalculado</th><th class="num">Na planilha</th><th class="num">Diferença</th></tr></thead>
+      <tbody>${mc.linhasForaDaConta.map(r=>`<tr><td>${esc(r.pilar)}</td><td class="num mono">${r.idx}</td>
+        <td>${esc(r.desc)||'—'}</td><td class="num mono">${money(r.calc)}</td>
+        <td class="num mono">${money(r.total)}</td><td class="num mono delta-dn">${money(r.total-r.calc)}</td></tr>`).join('')}</tbody></table></div>`;
+  h+=`</div></div>`;
+  return h;
+}
+
+/* ---------- simulador ---------- */
+function tabSimulador(mc){
+  if(!SIM||SIM.id!==mc.id){
+    SIM={id:mc.id,receita:mc.receita,rows:{}};
+    PILARES.forEach(p=>SIM.rows[p.k]=(mc.blocos[p.k].rows||[]).map(r=>({qtd:r.qtd,unit:r.unit,meses:r.meses,hm:r.hm})));
+  }
+  const s=simCalc(mc);
+  const d=s.mcProjetoPct-mc.mcProjetoPct,dd=s.mcDiretaPct-mc.mcDiretaPct;
+  const arr=x=>x>0.0001?'▲':(x<-0.0001?'▼':'=');
+  const cls=x=>x>0.0001?'delta-up':(x<-0.0001?'delta-dn':'muted');
+  let h=`<div class="sim-note">Mexa em quantidade, valor unitário, meses ou na receita bruta e a margem recalcula na hora.
+    <b>Nada disso altera a planilha original nem o que está salvo no painel</b> — é só cenário.</div>
+  <div class="kpis">
+    <div class="kpi hi"><div class="r1"><div class="ic">${svg(ICO.pct)}</div>
+      <span class="pill ${d>0.0001?'g':(d<-0.0001?'y':'n')}">${arr(d)} ${pct(Math.abs(d))}</span></div>
+      <div class="lbl">DM % simulada</div><div class="val">${pct(s.mcProjetoPct)}</div><div class="sub">original ${pct(mc.mcProjetoPct)}</div></div>
+    <div class="kpi c3"><div class="r1"><div class="ic">${svg(ICO.mc)}</div>
+      <span class="pill ${dd>0.0001?'g':(dd<-0.0001?'y':'n')}">${arr(dd)} ${pct(Math.abs(dd))}</span></div>
+      <div class="lbl">MC direta simulada</div><div class="val">${pct(s.mcDiretaPct)}</div><div class="sub">original ${pct(mc.mcDiretaPct)}</div></div>
+    <div class="kpi c2"><div class="r1"><div class="ic">${svg(ICO.chart)}</div>
+      <span class="pill n">${s.custo-mc.custo>=0?'+':''}${money0(s.custo-mc.custo)}</span></div>
+      <div class="lbl">Costs simulados</div><div class="val">${money0(s.custo)}</div><div class="sub">original ${money0(mc.custo)}</div></div>
+    <div class="kpi"><div class="r1"><div class="ic">${svg(ICO.cash)}</div>
+      <span class="pill n">${s.mcProjeto-mc.mcProjeto>=0?'+':''}${money0(s.mcProjeto-mc.mcProjeto)}</span></div>
+      <div class="lbl">DM em R$</div><div class="val">${money0(s.mcProjeto)}</div><div class="sub">original ${money0(mc.mcProjeto)}</div></div>
+  </div>
+  <div class="card" style="margin-bottom:16px"><div class="card-b"><div class="filters" style="margin:0">
+    <div><div style="font-size:10.5px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;margin-bottom:6px" class="muted">Receita bruta</div>
+      <input type="number" id="simReceita" value="${SIM.receita}" step="1000" style="width:180px"></div>
+    <div style="align-self:flex-end"><button class="btn ghost sm" id="simReset">Restaurar originais</button></div>
+    <div style="align-self:flex-end" class="muted">Impostos ${pct2(mc.impostoFator)} · rateios ${pct2((mc.rateios||[]).reduce((a,r)=>a+r.p,0))} — fixos, vêm da planilha</div>
+  </div></div></div>`;
+  PILARES.forEach(p=>{
+    const rows=mc.blocos[p.k].rows||[]; if(!rows.length) return;
+    const sr=SIM.rows[p.k], tot=sr.reduce((a,r)=>a+lineCost(r),0), orig=mc.somas[p.k];
+    h+=`<div class="card" style="margin-bottom:16px">
+      <div class="card-h" style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap">
+        <div><h3>${p.n}</h3></div><div style="flex:1"></div>
+        <div class="mono" style="font-weight:600">${money(tot)} <span class="${cls(orig-tot)}">(${tot-orig>=0?'+':''}${money0(tot-orig)})</span></div></div>
+      <div class="card-b flush"><div class="tbl-wrap"><table>
+      <thead><tr><th>#</th><th>Categoria</th><th>Descrição</th><th class="num">Qtde</th>
+        <th class="num">Vlr unit.</th><th class="num">Meses</th><th class="num">Custo</th><th class="num">vs. original</th></tr></thead>
+      <tbody>${rows.map((r,i)=>{
+        const v=sr[i],cur=lineCost(v);
+        const dirty=(v.qtd!==r.qtd||v.unit!==r.unit||v.meses!==r.meses)?' dirty':'';
+        return `<tr><td class="mono muted">${i+1}</td><td>${esc(r.cat)||'—'}</td>
+          <td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.desc)||'—'}</td>
+          <td class="num"><input class="simin${dirty}" type="number" step="0.01" value="${v.qtd}" data-p="${p.k}" data-i="${i}" data-f="qtd"></td>
+          <td class="num"><input class="simin${dirty}" type="number" step="0.01" value="${v.unit}" data-p="${p.k}" data-i="${i}" data-f="unit"></td>
+          <td class="num">${v.hm?`<input class="simin${dirty}" type="number" step="1" value="${v.meses}" data-p="${p.k}" data-i="${i}" data-f="meses">`:'<span class="zero">—</span>'}</td>
+          <td class="num mono"><b>${money(cur)}</b></td>
+          <td class="num mono ${cls(r.total-cur)}">${cur-r.total===0?'—':(cur-r.total>0?'+':'')+money0(cur-r.total)}</td></tr>`;
+      }).join('')}</tbody></table></div></div></div>`;
+  });
+  return h;
+}
+function simCalc(mc){
+  const somas={}; PILARES.forEach(p=>somas[p.k]=(SIM.rows[p.k]||[]).reduce((a,r)=>a+lineCost(r),0));
+  return calcDRE(SIM.receita,somas,mc.impostoFator,mc.rateios);
+}
+function bindSim(mc){
+  el('simReceita').oninput=e=>{ SIM.receita=num(e.target.value); redrawSim(mc,e.target); };
+  el('simReset').onclick=()=>{ SIM=null; renderDetalhe(mc,'sim'); };
+  document.querySelectorAll('input.simin').forEach(inp=>inp.oninput=e=>{
+    const {p,i,f}=e.target.dataset; SIM.rows[p][+i][f]=num(e.target.value); redrawSim(mc,e.target); });
+}
+let simTimer=null;
+function redrawSim(mc,focusEl){
+  clearTimeout(simTimer);
+  simTimer=setTimeout(()=>{
+    const isRec=focusEl&&focusEl.id==='simReceita';
+    const key=(focusEl&&focusEl.dataset&&focusEl.dataset.p)?`${focusEl.dataset.p}|${focusEl.dataset.i}|${focusEl.dataset.f}`:null;
+    const pos=focusEl?focusEl.selectionStart:null;
+    el('dBody').innerHTML=tabSimulador(mc); bindSim(mc);
+    let back=null;
+    if(isRec) back=el('simReceita');
+    else if(key){ const [p,i,f]=key.split('|');
+      back=document.querySelector(`input.simin[data-p="${p}"][data-i="${i}"][data-f="${f}"]`); }
+    if(back){ back.focus(); try{back.setSelectionRange(pos,pos);}catch(e){} }
+  },250);
+}
+
+/* ============================================================
+   EXPORT / TEMA / BOOT
+   ============================================================ */
+function exportCSV(){
+  const rs=rows();
+  const head=['ID','Contrato','Cliente','Responsavel','Produto','Inicio','Fim','Vigencia (meses)',
+    'Total contrato','Valor mensal','% FAT','TAX','IMP','Net revenue','Costs totais','Costs mensais',
+    ...CAIXAS.map(c=>c.col==='—'?'Nao mapeado':c.col),
+    'DM','%','Rateios','MC direta','MC direta %','Arquivo'];
+  const f=v=>v==null?'':String(v.toFixed(2)).replace('.',',');
+  const lines=[head.join(';')];
+  rs.forEach(r=>lines.push([r.contrato,r.projeto,r.cliente,r.responsavel,r.produto,r.inicio,r.fim,r.meses||'',
+    f(r.total),f(r.mensal),f(r.fat),f(r.tax),f(r.imp),f(r.net),f(r.costsTotais),f(r.costsMensais),
+    ...CAIXAS.map(c=>f(r.caixas[c.k])),
+    f(r.dm),f((r.dmPct||0)*100),f(r.rateios),f(r.mcDireta),f((r.mcDiretaPct||0)*100),r.arquivo]
+    .map(x=>`"${String(x==null?'':x).replace(/"/g,'""')}"`).join(';')));
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob(['﻿'+lines.join('\n')],{type:'text/csv;charset=utf-8'}));
+  a.download='dashboard-gerencial-mc.csv'; a.click();
+}
+function setTheme(t){
+  document.documentElement.setAttribute('data-theme',t);
+  try{ localStorage.setItem('faiston_mc_theme',t); }catch(e){}
+  if(TAB==='metricas'&&!DRILL&&MCS.length){ const rs=rows(); drawPilar(rs); drawCaixas(rs); }
+}
+
+el('btnAdd').onclick=()=>el('fileInput').click();
+el('drop').onclick=()=>el('fileInput').click();
+el('fileInput').onchange=e=>{ handleFiles([...e.target.files]); e.target.value=''; };
+el('btnExport').onclick=exportCSV;
+el('btnClear').onclick=async ()=>{ if(MCS.length&&confirm('Remover todas as MCs do painel? Isso apaga para toda a equipe. Os arquivos originais não são afetados.')){
+  try{ await fetch('/api/mcs/clear',{method:'POST',credentials:'include'}); }catch(e){}
+  showErr(''); DRILL=null; await loadMCs(); voltar(); render(); } };
+el('btnTheme').onclick=()=>setTheme(document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark');
+el('fBusca').oninput=e=>{ FILTRO.busca=e.target.value; render(); };
+el('fCliente').onchange=e=>{ FILTRO.cliente=e.target.value; FILTRO.mc=''; render(); };
+el('fMC').onchange=e=>{ FILTRO.mc=e.target.value; render(); };
+
+['dragenter','dragover'].forEach(ev=>document.addEventListener(ev,e=>{
+  e.preventDefault(); const d=el('drop'); if(d) d.classList.add('over'); }));
+['dragleave','drop'].forEach(ev=>document.addEventListener(ev,e=>{
+  e.preventDefault(); const d=el('drop'); if(d) d.classList.remove('over'); }));
+document.addEventListener('drop',e=>{ const fs=[...(e.dataTransfer?.files||[])]; if(fs.length) handleFiles(fs); });
+
+/* ---------- autenticação ---------- */
+function showApp(){ el('loginScreen').classList.add('hide'); el('appRoot').classList.remove('hide'); }
+function showLogin(){ el('appRoot').classList.add('hide'); el('loginScreen').classList.remove('hide'); }
+
+el('loginForm').onsubmit=async e=>{
+  e.preventDefault();
+  const senha=el('loginSenha').value;
+  el('loginErr').classList.add('hide');
+  try{
+    const res=await fetch('/api/login',{method:'POST',credentials:'include',
+      headers:{'Content-Type':'application/json'}, body:JSON.stringify({senha})});
+    if(!res.ok){ el('loginErr').textContent='Senha incorreta.'; el('loginErr').classList.remove('hide'); return; }
+    el('loginSenha').value='';
+    showApp();
+    await boot();
+  }catch(e){
+    el('loginErr').textContent='Não consegui falar com o servidor. Tente de novo.';
+    el('loginErr').classList.remove('hide');
+  }
+};
+el('btnLogout').onclick=async ()=>{
+  try{ await fetch('/api/logout',{method:'POST',credentials:'include'}); }catch(e){}
+  MCS=[]; showLogin();
+};
+
+async function boot(){
+  await loadMCs();
+  render();
+}
+
+(async function init(){
+  try{ const t=localStorage.getItem('faiston_mc_theme'); if(t) document.documentElement.setAttribute('data-theme',t); }catch(e){}
+  let authed=false;
+  try{ authed=(await fetch('/api/me',{credentials:'include'})).ok; }catch(e){}
+  if(authed){ showApp(); await boot(); } else { showLogin(); }
+})();
+
+</script>
+</body>
+</html>

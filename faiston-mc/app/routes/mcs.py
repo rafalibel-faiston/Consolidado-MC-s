@@ -1,0 +1,124 @@
+from __future__ import annotations
+
+from io import BytesIO
+
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from sqlalchemy.orm import Session
+
+from .. import models
+from ..compat import mc_to_frontend
+from ..database import get_db
+from ..parser import MC, parse_mc
+from .auth import require_auth
+
+router = APIRouter(prefix="/api/mcs", tags=["mcs"], dependencies=[Depends(require_auth)])
+
+ALLOWED_EXT = {"xlsx", "xlsm", "xlsb"}
+MAX_FILE_BYTES = 30 * 1024 * 1024  # 30 MB
+
+
+def _upsert(db: Session, parsed: MC, frontend_mc: dict) -> models.MCRecord:
+    mc_id = frontend_mc["id"]
+    rec = db.get(models.MCRecord, mc_id)
+    if rec is None:
+        rec = models.MCRecord(id=mc_id)
+        db.add(rec)
+
+    rec.contrato = frontend_mc.get("contrato") or ""
+    rec.cliente = frontend_mc.get("cliente") or ""
+    rec.projeto = frontend_mc.get("projeto") or ""
+    rec.arquivo = frontend_mc.get("arquivo") or ""
+    rec.receita = frontend_mc.get("receita")
+    rec.custo = frontend_mc.get("custo")
+    rec.mc_projeto = frontend_mc.get("mcProjeto")
+    rec.mc_projeto_pct = frontend_mc.get("mcProjetoPct")
+    rec.mc_direta = frontend_mc.get("mcDireta")
+    rec.mc_direta_pct = frontend_mc.get("mcDiretaPct")
+    rec.alerta = bool(parsed.divergencias or parsed.linhas_fora)
+    rec.dados = frontend_mc
+
+    db.query(models.MCLinha).filter(models.MCLinha.mc_id == mc_id).delete()
+    for l in parsed.linhas:
+        db.add(models.MCLinha(
+            mc_id=mc_id, pilar_k=l.pilar_k, pilar=l.pilar, aba=l.aba, idx=l.idx,
+            cat=l.cat, desc=l.desc, extra=l.extra, g1=l.g1,
+            meses=l.meses, qtd=l.qtd, unit=l.unit, total=l.total,
+            hm=l.hm, calc=l.calc, caixa=l.caixa,
+        ))
+    return rec
+
+
+@router.get("")
+def listar(db: Session = Depends(get_db)):
+    recs = db.query(models.MCRecord).order_by(models.MCRecord.criado_em.asc()).all()
+    return [r.dados for r in recs]
+
+
+@router.get("/{mc_id}")
+def detalhe(mc_id: str, db: Session = Depends(get_db)):
+    rec = db.get(models.MCRecord, mc_id)
+    if not rec:
+        raise HTTPException(status_code=404, detail="MC não encontrada")
+    return rec.dados
+
+
+@router.post("/upload")
+async def upload(files: list[UploadFile] = File(...), db: Session = Depends(get_db)):
+    added: list[str] = []
+    erros: list[dict] = []
+
+    for f in files:
+        ext = (f.filename or "").rsplit(".", 1)[-1].lower()
+        content = await f.read()
+
+        if len(content) > MAX_FILE_BYTES:
+            msg = "arquivo maior que 30 MB."
+            erros.append({"arquivo": f.filename, "mensagem": msg})
+            db.add(models.Ingestao(arquivo=f.filename or "", status="erro", mensagem=msg))
+            continue
+
+        if ext not in ALLOWED_EXT:
+            msg = "formato não suportado — envie .xlsx, .xlsm ou .xlsb."
+            erros.append({"arquivo": f.filename, "mensagem": msg})
+            db.add(models.Ingestao(arquivo=f.filename or "", status="erro", mensagem=msg))
+            continue
+
+        try:
+            parsed = parse_mc(BytesIO(content), f.filename or "")
+        except Exception as e:  # arquivo corrompido, xlsb ilegível, etc.
+            msg = f"não consegui ler o arquivo ({e})."
+            erros.append({"arquivo": f.filename, "mensagem": msg})
+            db.add(models.Ingestao(arquivo=f.filename or "", status="erro", mensagem=msg))
+            continue
+
+        if not parsed.calc.get("receita") and not sum(parsed.somas.values()):
+            msg = "não encontrei as abas do modelo de MC (2.1 a 2.4 / 5.DRE)."
+            erros.append({"arquivo": f.filename, "mensagem": msg})
+            db.add(models.Ingestao(arquivo=f.filename or "", status="erro", mensagem=msg))
+            continue
+
+        frontend_mc = mc_to_frontend(parsed)
+        _upsert(db, parsed, frontend_mc)
+        added.append(frontend_mc["id"])
+        db.add(models.Ingestao(arquivo=f.filename or "", mc_id=frontend_mc["id"], status="ok"))
+
+    db.commit()
+    return {"ok": added, "erros": erros}
+
+
+@router.delete("/{mc_id}")
+def remover(mc_id: str, db: Session = Depends(get_db)):
+    rec = db.get(models.MCRecord, mc_id)
+    if not rec:
+        raise HTTPException(status_code=404, detail="MC não encontrada")
+    db.delete(rec)
+    db.commit()
+    return {"ok": True}
+
+
+@router.post("/clear")
+def limpar(db: Session = Depends(get_db)):
+    db.query(models.MCLinha).delete()
+    db.query(models.MCRecord).delete()
+    db.commit()
+    return {"ok": True}
