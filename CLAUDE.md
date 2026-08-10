@@ -202,14 +202,18 @@ GET  /api/mcs                lista todas as MCs (formato compatível com o front
 GET  /api/mcs/{id}            detalhe de uma MC
 DELETE /api/mcs/{id}          remove uma MC
 POST /api/mcs/clear           remove todas (usado pelo botão "Limpar painel")
+GET  /api/clientes            consolidado por cliente (contratos, receita, custo, MC)
 ```
 
 `id` de uma MC é `"{contrato}|{arquivo}"` — reenviar o mesmo arquivo faz upsert, não
-duplica.
+duplica. Número de contrato é extraído do nome do arquivo (`CONTRATO_RX` em
+`parser.py`): uma letra (`F`, `C`, ...) + 6 dígitos, com sufixo opcional `-N` ou
+`-N` + uma letra (`F221082-6`, `C260020-2B`). Não tem fallback pra `1.DADOS_INICIAIS`
+— se o nome do arquivo não bater com o padrão, contrato fica vazio.
 
 ### Banco
 
-Três tabelas (Postgres, mas cai pra SQLite local se `DATABASE_URL` não estiver
+Quatro tabelas (Postgres, mas cai pra SQLite local se `DATABASE_URL` não estiver
 setado — só pra rodar/testar sem banco):
 
 - **mcs** — cabeçalho + totais + o objeto MC inteiro em JSON (é o que a API devolve
@@ -217,6 +221,10 @@ setado — só pra rodar/testar sem banco):
 - **mc_linhas** — linha a linha já classificada, pra dar pra consultar por caixinha
   sem abrir o JSON no futuro
 - **ingestoes** — histórico de cada upload (arquivo, resultado, mensagem de erro)
+- **clientes** — consolidado por cliente (contratos, receita, receita líquida, custo,
+  MC do projeto, MC direta), recalculado a cada upload/delete/clear em
+  `routes/mcs.py::_refresh_cliente`. Some da tabela quando o cliente fica sem
+  nenhuma MC.
 
 Tabelas são criadas automaticamente no startup (`Base.metadata.create_all`) — sem
 Alembic por enquanto, é cedo pro projeto pra valer a complexidade de migrations.
@@ -270,7 +278,11 @@ Não tem framework de teste automatizado ainda. O que foi feito até aqui:
   Depois, subido o servidor local e exercitado o ciclo HTTP completo: login com senha
   errada/certa, `/api/me` antes/depois, upload multipart (incluindo arquivo inválido,
   que retorna erro claro em vez de 500), upsert do mesmo arquivo (não duplica),
-  detalhe, delete, clear e logout.
+  detalhe, delete, clear e logout. `CONTRATO_RX` (extração do nº de contrato pelo
+  nome do arquivo) testada contra os nomes reais que a Bruna usa na pasta do
+  OneDrive (`F221082-6 - NTT - ...`, `C260020-2B - NAVEGACAO GUARITA`, etc). Tabela
+  `clientes` testada com 3 MCs sintéticas de 2 clientes: soma bate no upload, recalcula
+  certo no delete e zera no clear.
 - **O que falta:** rodar contra uma planilha real da Faiston e conferir os números de
   referência da seção 1 (`MC F260153-2 NTT - Instalação.xlsx`) — isso só dá pra fazer
   com o arquivo de verdade em mãos, que não estava disponível nesta sessão.

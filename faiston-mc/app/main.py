@@ -8,6 +8,7 @@ from fastapi.responses import FileResponse
 from .config import settings
 from .database import init_db
 from .routes.auth import router as auth_router
+from .routes.clientes import router as clientes_router
 from .routes.mcs import router as mcs_router
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -27,6 +28,7 @@ def on_startup() -> None:
 
 app.include_router(auth_router)
 app.include_router(mcs_router)
+app.include_router(clientes_router)
 
 
 @app.get("/healthz")

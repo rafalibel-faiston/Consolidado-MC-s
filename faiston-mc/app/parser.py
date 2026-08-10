@@ -329,15 +329,20 @@ def parse_fatores(wb: Workbook) -> dict:
 
 # ---------------------------------------------------------------- cabeçalho
 
+# padrão dos números de contrato da Faiston: uma letra (F, C, ...) + 6 dígitos,
+# opcionalmente com um sufixo "-N" ou "-N" + uma letra (ex: F221082-6, C260020-2B)
+CONTRATO_RX = r"[A-Za-z]\s?\d{6}(?:-\d+[A-Za-z]?)?"
+
+
 def parse_meta(wb: Workbook, filename: str) -> dict:
     base = re.sub(r"\.[^.]+$", "", filename)
-    m = re.search(r"F\s?\d{6}(?:-\d+)?", base, re.I)
+    m = re.search(CONTRATO_RX, base, re.I)
 
     meta: dict[str, Any] = {
         "arquivo": filename,
         "contrato": re.sub(r"\s", "", m.group(0)).upper() if m else "",
     }
-    resto = re.sub(r"^[\s\-–_]+", "", re.sub(r"F\s?\d{6}(?:-\d+)?", "",
+    resto = re.sub(r"^[\s\-–_]+", "", re.sub(CONTRATO_RX, "",
                    re.sub(r"^MC\s*", "", base, flags=re.I), flags=re.I)).strip()
     parts = re.split(r"\s+[-–]\s+", resto)
     meta["cliente"] = (parts[0] or "").strip()

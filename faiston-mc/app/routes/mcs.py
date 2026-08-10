@@ -3,6 +3,7 @@ from __future__ import annotations
 from io import BytesIO
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from .. import models
@@ -17,9 +18,39 @@ ALLOWED_EXT = {"xlsx", "xlsm", "xlsb"}
 MAX_FILE_BYTES = 30 * 1024 * 1024  # 30 MB
 
 
+def _refresh_cliente(db: Session, nome: str) -> None:
+    """Recalcula o consolidado de um cliente a partir das MCs que estão no banco agora."""
+    if not nome:
+        return
+    n, receita, receita_liq, custo, mcp, mcd = db.query(
+        func.count(models.MCRecord.id),
+        func.coalesce(func.sum(models.MCRecord.receita), 0.0),
+        func.coalesce(func.sum(models.MCRecord.receita_liq), 0.0),
+        func.coalesce(func.sum(models.MCRecord.custo), 0.0),
+        func.coalesce(func.sum(models.MCRecord.mc_projeto), 0.0),
+        func.coalesce(func.sum(models.MCRecord.mc_direta), 0.0),
+    ).filter(models.MCRecord.cliente == nome).one()
+
+    cli = db.query(models.Cliente).filter(models.Cliente.nome == nome).one_or_none()
+    if n == 0:
+        if cli:
+            db.delete(cli)
+        return
+    if cli is None:
+        cli = models.Cliente(nome=nome)
+        db.add(cli)
+    cli.n_contratos = n
+    cli.receita_total = receita
+    cli.receita_liq_total = receita_liq
+    cli.custo_total = custo
+    cli.mc_projeto_total = mcp
+    cli.mc_direta_total = mcd
+
+
 def _upsert(db: Session, parsed: MC, frontend_mc: dict) -> models.MCRecord:
     mc_id = frontend_mc["id"]
     rec = db.get(models.MCRecord, mc_id)
+    cliente_anterior = rec.cliente if rec else None
     if rec is None:
         rec = models.MCRecord(id=mc_id)
         db.add(rec)
@@ -29,6 +60,7 @@ def _upsert(db: Session, parsed: MC, frontend_mc: dict) -> models.MCRecord:
     rec.projeto = frontend_mc.get("projeto") or ""
     rec.arquivo = frontend_mc.get("arquivo") or ""
     rec.receita = frontend_mc.get("receita")
+    rec.receita_liq = frontend_mc.get("receitaLiq")
     rec.custo = frontend_mc.get("custo")
     rec.mc_projeto = frontend_mc.get("mcProjeto")
     rec.mc_projeto_pct = frontend_mc.get("mcProjetoPct")
@@ -45,6 +77,11 @@ def _upsert(db: Session, parsed: MC, frontend_mc: dict) -> models.MCRecord:
             meses=l.meses, qtd=l.qtd, unit=l.unit, total=l.total,
             hm=l.hm, calc=l.calc, caixa=l.caixa,
         ))
+
+    db.flush()
+    if cliente_anterior and cliente_anterior != rec.cliente:
+        _refresh_cliente(db, cliente_anterior)
+    _refresh_cliente(db, rec.cliente)
     return rec
 
 
@@ -111,7 +148,10 @@ def remover(mc_id: str, db: Session = Depends(get_db)):
     rec = db.get(models.MCRecord, mc_id)
     if not rec:
         raise HTTPException(status_code=404, detail="MC não encontrada")
+    cliente = rec.cliente
     db.delete(rec)
+    db.flush()
+    _refresh_cliente(db, cliente)
     db.commit()
     return {"ok": True}
 
@@ -120,5 +160,6 @@ def remover(mc_id: str, db: Session = Depends(get_db)):
 def limpar(db: Session = Depends(get_db)):
     db.query(models.MCLinha).delete()
     db.query(models.MCRecord).delete()
+    db.query(models.Cliente).delete()
     db.commit()
     return {"ok": True}
