@@ -310,9 +310,7 @@ html[data-theme=dark] .delta-dn{color:#fb7185}
         <input type="text" id="fBusca" placeholder="Buscar projeto ou contrato">
       </div>
       <select id="fCliente"><option value="">Todos os clientes</option></select>
-      <select id="fStatus"><option value="">Todos os status</option>
-        <option value="ativo">Ativo</option><option value="finalizado">Finalizado</option>
-        <option value="a_validar">A validar</option></select>
+      <div class="tabbar" id="fStatusBar" style="margin-bottom:0"></div>
       <select id="fMC" style="max-width:230px"><option value="">Todas as MCs</option></select>
       <select id="selImportStatus" title="Como classificar as MCs que forem importadas agora">
         <option value="a_validar">Importar como: A validar</option>
@@ -647,6 +645,16 @@ function syncSelects(){
   const ms=MCS.filter(m=>!FILTRO.cliente||m.cliente===FILTRO.cliente);
   el('fMC').innerHTML=`<option value="">Todas as MCs</option>`+
     ms.map(m=>`<option value="${esc(m.id)}" ${FILTRO.mc===m.id?'selected':''}>${esc(m.contrato||'—')} · ${esc(m.projeto).slice(0,42)}</option>`).join('');
+  renderStatusFilter();
+}
+
+function renderStatusFilter(){
+  const opts=[{k:'',n:'Todos'},...STATUS_MC];
+  el('fStatusBar').innerHTML=opts.map(o=>
+    `<div class="t ${FILTRO.status===o.k?'on':''}" data-fstatus="${o.k}">${o.n}</div>`).join('');
+  el('fStatusBar').querySelectorAll('[data-fstatus]').forEach(e=>e.onclick=()=>{
+    FILTRO.status=e.dataset.fstatus; FILTRO.mc=''; render();
+  });
 }
 
 function renderKPIs(rs){
@@ -1302,7 +1310,6 @@ el('btnClear').onclick=async ()=>{ if(MCS.length&&confirm('Remover todas as MCs 
 el('btnTheme').onclick=()=>setTheme(document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark');
 el('fBusca').oninput=e=>{ FILTRO.busca=e.target.value; render(); };
 el('fCliente').onchange=e=>{ FILTRO.cliente=e.target.value; FILTRO.mc=''; render(); };
-el('fStatus').onchange=e=>{ FILTRO.status=e.target.value; render(); };
 el('fMC').onchange=e=>{ FILTRO.mc=e.target.value; render(); };
 
 ['dragenter','dragover'].forEach(ev=>document.addEventListener(ev,e=>{
