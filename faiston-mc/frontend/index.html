@@ -104,6 +104,7 @@ html[data-theme=dark] .kpi.c3 .ic{background:#3a1440;color:#e879f9}
 .pill.n{background:var(--bg);color:var(--mut);border-color:var(--line-2)}
 html[data-theme=dark] .pill.g{background:#0d2f24;border-color:#174736}
 html[data-theme=dark] .pill.y{background:#3a2a0c;border-color:#54401a}
+select.statusSel{cursor:pointer;font-family:inherit;outline:none}
 .kpi .lbl{font-size:10.5px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--mut);margin-bottom:5px}
 .kpi .val{font-size:29px;font-weight:700;letter-spacing:-1.2px;line-height:1.05;font-family:'Inter'}
 .kpi .val u{text-decoration:none;font-size:15px;font-weight:600;color:var(--mut);margin-left:2px}
@@ -309,6 +310,9 @@ html[data-theme=dark] .delta-dn{color:#fb7185}
         <input type="text" id="fBusca" placeholder="Buscar projeto ou contrato">
       </div>
       <select id="fCliente"><option value="">Todos os clientes</option></select>
+      <select id="fStatus"><option value="">Todos os status</option>
+        <option value="ativo">Ativo</option><option value="finalizado">Finalizado</option>
+        <option value="a_validar">A validar</option></select>
       <select id="fMC" style="max-width:230px"><option value="">Todas as MCs</option></select>
       <button class="btn" id="btnAdd"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>Importar MC</button>
       <button class="icobtn" id="btnExport" title="Exportar CSV"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg></button>
@@ -494,7 +498,8 @@ function dashRow(mc){
     costsTotais: mc.custo, costsMensais: meses ? mc.custo/meses : null,
     caixas, dm: mc.mcProjeto, dmPct: mc.mcProjetoPct,
     rateios: mc.rateioTot, mcDireta: mc.mcDireta, mcDiretaPct: mc.mcDiretaPct,
-    arquivo: mc.arquivo, alerta: (mc.divergencias.length||mc.linhasForaDaConta.length)?1:0
+    arquivo: mc.arquivo, alerta: (mc.divergencias.length||mc.linhasForaDaConta.length)?1:0,
+    status: mc.status || 'a_validar'
   };
 }
 
@@ -518,9 +523,27 @@ const CX_COLOR={n1:'#7c3aed',n2:'#8b5cf6',campo:'#22d3ee',logpecas:'#4c1d95',mol
   armaz:'#0891b2',reparo:'#a855f7',spare:'#d946ef',locacao:'#c026d3',sdm:'#9333ea',
   sistema:'#e879f9',tel:'#06b6d4',adm:'#5b21b6',gp:'#a78bfa',nao:'#94a3b8'};
 
+/* status operacional da MC — não vem da planilha, é classificação manual
+   (mesma ideia das pastas 01-ATIVOS/02-FINALIZADOS/03-A VALIDAR do OneDrive) */
+const STATUS_MC=[
+  {k:'ativo',      n:'Ativo',      pill:'g'},
+  {k:'finalizado', n:'Finalizado', pill:'n'},
+  {k:'a_validar',  n:'A validar',  pill:'y'}
+];
+const STATUS_BY_K=Object.fromEntries(STATUS_MC.map(s=>[s.k,s]));
+const statusDe = mc => STATUS_BY_K[mc.status] || STATUS_BY_K.a_validar;
+async function setStatus(id, status){
+  try{
+    await fetch(`/api/mcs/${encodeURIComponent(id)}/status`,{method:'PATCH',credentials:'include',
+      headers:{'Content-Type':'application/json'}, body:JSON.stringify({status})});
+  }catch(e){}
+  await loadMCs();
+  render();
+}
+
 /* ---------- store ---------- */
 let MCS=[];
-let FILTRO={cliente:'',busca:'',mc:''};
+let FILTRO={cliente:'',busca:'',mc:'',status:''};
 let SORT={col:'dmPct',dir:-1};
 let TAB='gerencial';
 let ESCALA='total';          // 'total' | 'mes'
@@ -562,6 +585,7 @@ function filtradas(){
   return MCS.filter(m=>{
     if(FILTRO.mc && m.id!==FILTRO.mc) return false;
     if(FILTRO.cliente && m.cliente!==FILTRO.cliente) return false;
+    if(FILTRO.status && (m.status||'a_validar')!==FILTRO.status) return false;
     if(FILTRO.busca){
       const q=N(FILTRO.busca);
       if(!(N(m.projeto).includes(q)||N(m.contrato).includes(q)||N(m.cliente).includes(q))) return false;
@@ -678,6 +702,10 @@ function renderTabBody(rs){
   document.querySelectorAll('th[data-sort]').forEach(h=>h.onclick=()=>{
     const c=h.dataset.sort; if(SORT.col===c) SORT.dir*=-1; else {SORT.col=c;SORT.dir=-1;} render();});
   if(!DRILL && TAB==='metricas'){ drawPilar(rs); drawCaixas(rs); }
+  document.querySelectorAll('select.statusSel').forEach(s=>{
+    s.onclick=e=>e.stopPropagation();
+    s.onchange=e=>{ e.stopPropagation(); setStatus(s.dataset.id, s.value); };
+  });
   bindOpen(b);
 }
 
@@ -706,7 +734,7 @@ function viewGerencial(rs){
       <p>mesmas colunas do DASHBOARD_GERENCIAL_CONTRATOS, alimentadas pelas MCs — clique numa caixinha no cabeçalho para abrir as linhas</p></div>
     <div class="card-b flush"><div class="tbl-wrap"><table class="wide">
     <thead><tr>
-      ${thS('contrato','ID')}${thS('projeto','Contratos')}${thS('cliente','Cliente')}
+      ${thS('contrato','ID')}${thS('status','Situação')}${thS('projeto','Contratos')}${thS('cliente','Cliente')}
       ${thS('responsavel','Responsável')}${thS('produto','Produto')}
       <th>Comentários</th>${thS('inicio','Início')}${thS('fim','Fim')}${thS('meses','Vigência','num')}
       ${thS('total','Total contrato','num')}${thS('mensal','Valor mensal','num')}${thS('fat','% FAT','num')}
@@ -715,9 +743,12 @@ function viewGerencial(rs){
       ${cxHead}
       ${thS('dm','DM','num')}${thS('dmPct','%','num')}
       ${thS('rateios','Rateios','num')}${thS('mcDireta','MC direta','num')}${thS('mcDiretaPct','MC dir. %','num')}
-      <th>Status</th></tr></thead>
+      <th>Auditoria</th></tr></thead>
     <tbody>${ord.map(r=>`<tr class="clickable" data-open="${esc(r.id)}">
       <td class="mono"><b>${esc(r.contrato||'—')}</b></td>
+      <td onclick="event.stopPropagation()"><select class="statusSel pill ${statusDe(r).pill}" data-id="${esc(r.id)}">
+        ${STATUS_MC.map(s=>`<option value="${s.k}" ${r.status===s.k?'selected':''}>${s.n}</option>`).join('')}
+      </select></td>
       <td style="max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.projeto)}</td>
       <td>${esc(r.cliente)}</td>
       <td>${esc(r.responsavel)||'<span class="zero">—</span>'}</td>
@@ -743,7 +774,7 @@ function viewGerencial(rs){
       <td>${r.alerta?'<span class="badge warn">revisar</span>':'<span class="badge ok">ok</span>'}</td>
     </tr>`).join('')}</tbody>
     <tfoot><tr><td class="mono">Total · ${ord.length} contrato${ord.length>1?'s':''}</td>
-      <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+      <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
       <td class="num mono">${money0(t.total)}</td>
       <td></td><td></td><td></td>
       <td class="num mono">${money0(t.imp)}</td><td class="num mono">${money0(t.net)}</td>
@@ -982,6 +1013,9 @@ function renderDetalhe(mc,tab){
         <p class="muted" style="font-size:13px;margin-top:4px"><b>${esc(mc.contrato||'sem contrato')}</b> · ${esc(mc.cliente)}${mc.mesesContrato?` · ${mc.mesesContrato} meses`:''}${mc.inicio?` · ${esc(mc.inicio)}${mc.fim?' a '+esc(mc.fim):''}`:''}
         <br><span style="opacity:.75">${esc(mc.arquivo)}</span></p></div>
       <div class="sp"></div>
+      <select class="statusSel pill ${statusDe(mc).pill}" id="selStatus" style="margin-right:9px">
+        ${STATUS_MC.map(s=>`<option value="${s.k}" ${(mc.status||'a_validar')===s.k?'selected':''}>${s.n}</option>`).join('')}
+      </select>
       <button class="btn danger sm" id="btnRemover">Remover do painel</button>
     </div>
     <div class="kpis">
@@ -1002,6 +1036,15 @@ function renderDetalhe(mc,tab){
   el('btnRemover').onclick=async ()=>{ if(confirm('Remover esta MC do painel? O arquivo original não é afetado.')){
     try{ await fetch(`/api/mcs/${encodeURIComponent(mc.id)}`,{method:'DELETE',credentials:'include'}); }catch(e){}
     await loadMCs(); voltar(); } };
+  el('selStatus').onchange=async e=>{
+    const novo=e.target.value;
+    try{
+      await fetch(`/api/mcs/${encodeURIComponent(mc.id)}/status`,{method:'PATCH',credentials:'include',
+        headers:{'Content-Type':'application/json'}, body:JSON.stringify({status:novo})});
+    }catch(err){}
+    await loadMCs();
+    renderDetalhe(MCS.find(m=>m.id===mc.id)||mc, tab);
+  };
   el('dTabs').querySelectorAll('[data-tab]').forEach(t=>t.onclick=()=>renderDetalhe(mc,t.dataset.tab));
   const b=el('dBody');
   if(tab==='resumo') b.innerHTML=tabResumo(mc);
@@ -1222,13 +1265,13 @@ function redrawSim(mc,focusEl){
    ============================================================ */
 function exportCSV(){
   const rs=rows();
-  const head=['ID','Contrato','Cliente','Responsavel','Produto','Inicio','Fim','Vigencia (meses)',
+  const head=['ID','Situacao','Contrato','Cliente','Responsavel','Produto','Inicio','Fim','Vigencia (meses)',
     'Total contrato','Valor mensal','% FAT','TAX','IMP','Net revenue','Costs totais','Costs mensais',
     ...CAIXAS.map(c=>c.col==='—'?'Nao mapeado':c.col),
     'DM','%','Rateios','MC direta','MC direta %','Arquivo'];
   const f=v=>v==null?'':String(v.toFixed(2)).replace('.',',');
   const lines=[head.join(';')];
-  rs.forEach(r=>lines.push([r.contrato,r.projeto,r.cliente,r.responsavel,r.produto,r.inicio,r.fim,r.meses||'',
+  rs.forEach(r=>lines.push([r.contrato,statusDe(r).n,r.projeto,r.cliente,r.responsavel,r.produto,r.inicio,r.fim,r.meses||'',
     f(r.total),f(r.mensal),f(r.fat),f(r.tax),f(r.imp),f(r.net),f(r.costsTotais),f(r.costsMensais),
     ...CAIXAS.map(c=>f(r.caixas[c.k])),
     f(r.dm),f((r.dmPct||0)*100),f(r.rateios),f(r.mcDireta),f((r.mcDiretaPct||0)*100),r.arquivo]
@@ -1253,6 +1296,7 @@ el('btnClear').onclick=async ()=>{ if(MCS.length&&confirm('Remover todas as MCs 
 el('btnTheme').onclick=()=>setTheme(document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark');
 el('fBusca').oninput=e=>{ FILTRO.busca=e.target.value; render(); };
 el('fCliente').onchange=e=>{ FILTRO.cliente=e.target.value; FILTRO.mc=''; render(); };
+el('fStatus').onchange=e=>{ FILTRO.status=e.target.value; render(); };
 el('fMC').onchange=e=>{ FILTRO.mc=e.target.value; render(); };
 
 ['dragenter','dragover'].forEach(ev=>document.addEventListener(ev,e=>{

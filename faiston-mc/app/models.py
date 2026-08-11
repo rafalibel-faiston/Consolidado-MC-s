@@ -39,6 +39,7 @@ class MCRecord(Base):
     mc_projeto_pct = Column(Float)
     mc_direta = Column(Float)
     mc_direta_pct = Column(Float)
+    status = Column(String, nullable=True)  # 'ativo' | 'finalizado' | 'a_validar'
     alerta = Column(Boolean, default=False, nullable=False)
     dados = Column(JSON, nullable=False)
     criado_em = Column(DateTime(timezone=True), default=utcnow, nullable=False)

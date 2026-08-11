@@ -3,6 +3,7 @@ from __future__ import annotations
 from io import BytesIO
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from pydantic import BaseModel
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -15,6 +16,15 @@ router = APIRouter(prefix="/api/mcs", tags=["mcs"])
 
 ALLOWED_EXT = {"xlsx", "xlsm", "xlsb"}
 MAX_FILE_BYTES = 30 * 1024 * 1024  # 30 MB
+
+STATUS_PADRAO = "a_validar"
+STATUS_VALIDOS = {"ativo", "finalizado", "a_validar"}
+
+
+def _serialize(rec: models.MCRecord) -> dict:
+    """O JSON salvo é o objeto MC puro (saída do parser) — status é um dado
+    operacional à parte, não vem da planilha, então entra por cima aqui."""
+    return {**rec.dados, "status": rec.status or STATUS_PADRAO}
 
 
 def _refresh_cliente(db: Session, nome: str) -> None:
@@ -51,7 +61,7 @@ def _upsert(db: Session, parsed: MC, frontend_mc: dict) -> models.MCRecord:
     rec = db.get(models.MCRecord, mc_id)
     cliente_anterior = rec.cliente if rec else None
     if rec is None:
-        rec = models.MCRecord(id=mc_id)
+        rec = models.MCRecord(id=mc_id, status=STATUS_PADRAO)
         db.add(rec)
 
     rec.contrato = frontend_mc.get("contrato") or ""
@@ -87,7 +97,7 @@ def _upsert(db: Session, parsed: MC, frontend_mc: dict) -> models.MCRecord:
 @router.get("")
 def listar(db: Session = Depends(get_db)):
     recs = db.query(models.MCRecord).order_by(models.MCRecord.criado_em.asc()).all()
-    return [r.dados for r in recs]
+    return [_serialize(r) for r in recs]
 
 
 @router.get("/{mc_id}")
@@ -95,7 +105,24 @@ def detalhe(mc_id: str, db: Session = Depends(get_db)):
     rec = db.get(models.MCRecord, mc_id)
     if not rec:
         raise HTTPException(status_code=404, detail="MC não encontrada")
-    return rec.dados
+    return _serialize(rec)
+
+
+class StatusBody(BaseModel):
+    status: str
+
+
+@router.patch("/{mc_id}/status")
+def atualizar_status(mc_id: str, body: StatusBody, db: Session = Depends(get_db)):
+    if body.status not in STATUS_VALIDOS:
+        raise HTTPException(status_code=400, detail=f"status inválido — use um de {sorted(STATUS_VALIDOS)}")
+    rec = db.get(models.MCRecord, mc_id)
+    if not rec:
+        raise HTTPException(status_code=404, detail="MC não encontrada")
+    rec.status = body.status
+    rec.dados = {**rec.dados, "status": body.status}
+    db.commit()
+    return _serialize(rec)
 
 
 @router.post("/upload")

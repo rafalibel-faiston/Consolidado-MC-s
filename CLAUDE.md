@@ -199,6 +199,7 @@ GET  /                     serve o painel (index.html)
 POST /api/mcs/upload        multipart (files[]) → parse no servidor → upsert → {ok:[ids], erros:[...]}
 GET  /api/mcs                lista todas as MCs (formato compatível com o front)
 GET  /api/mcs/{id}            detalhe de uma MC
+PATCH /api/mcs/{id}/status    troca a classificação (ativo/finalizado/a_validar)
 DELETE /api/mcs/{id}          remove uma MC
 POST /api/mcs/clear           remove todas (usado pelo botão "Limpar painel")
 GET  /api/clientes            consolidado por cliente (contratos, receita, custo, MC)
@@ -209,6 +210,18 @@ duplica. Número de contrato é extraído do nome do arquivo (`CONTRATO_RX` em
 `parser.py`): uma letra (`F`, `C`, ...) + 6 dígitos, com sufixo opcional `-N` ou
 `-N` + uma letra (`F221082-6`, `C260020-2B`). Não tem fallback pra `1.DADOS_INICIAIS`
 — se o nome do arquivo não bater com o padrão, contrato fica vazio.
+
+### Classificação da MC (status)
+
+Espelha as pastas que a Bruna usa no OneDrive (`01-CONTRATOS ATIVOS`,
+`02-CONTRATOS FINALIZADOS`, `03-STATUS A VALIDAR`): campo `status` em `mcs`
+(`ativo` | `finalizado` | `a_validar`), independente do que vem da planilha — não
+existe em `1.DADOS_INICIAIS` nem em lugar nenhum do modelo de MC, é classificação
+manual feita no painel. MC nova entra como `a_validar`; reenviar a mesma planilha
+(upsert) não reseta o status já definido. Editável direto na tabela Gerencial
+(coluna "Situação", um `<select>` por linha) ou na tela de detalhe da MC. O JSON em
+`mcs.dados` guarda uma cópia do status também, pra ficar redundante com a coluna e
+não precisar de join pra montar a resposta da API.
 
 ### Banco
 
