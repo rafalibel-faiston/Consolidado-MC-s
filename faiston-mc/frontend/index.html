@@ -6,6 +6,7 @@
 <title>MC · Faiston Ops</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Slab:wght@600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
 <style>
 :root{
   --bg:#f4f4f8; --panel:#fff; --side:#fff; --line:#ececf3; --line-2:#e2e2ec;
@@ -54,11 +55,18 @@ h3{font-size:14.5px;font-weight:600;letter-spacing:-.2px}
 .top .ttl h1{margin-bottom:3px}
 .top .ttl p{color:var(--mut);font-size:13px}
 .top .acts{margin-left:auto;display:flex;align-items:center;gap:9px;flex-wrap:wrap}
-.search{position:relative}
-.search input{width:210px;padding:9px 12px 9px 34px;border-radius:10px;border:1px solid var(--line-2);
-  background:var(--panel);color:var(--tx);font-family:inherit;font-size:13px;outline:none}
+.search{position:relative;flex:0 0 auto}
+.search input{width:210px;padding:9px 14px 9px 38px;border-radius:10px;border:1px solid var(--line-2);
+  background:var(--panel);color:var(--tx);font-family:inherit;font-size:13px;outline:none;box-sizing:border-box}
 .search input:focus{border-color:var(--vio);box-shadow:0 0 0 3px var(--vio-soft)}
-.search svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);width:15px;height:15px;color:var(--mut)}
+.search svg{position:absolute;left:13px;top:50%;transform:translateY(-50%);width:15px;height:15px;color:var(--mut);pointer-events:none}
+.import-menu{position:absolute;top:calc(100% + 6px);right:0;background:var(--panel);border:1px solid var(--line);
+  border-radius:12px;box-shadow:var(--shadow-lg);padding:6px;min-width:170px;z-index:50}
+.import-menu .im-lbl{font-size:10.5px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;color:var(--mut);
+  padding:7px 10px 5px}
+.import-menu .im-item{padding:9px 10px;border-radius:8px;font-size:13.5px;font-weight:500;color:var(--tx-2);
+  cursor:pointer;white-space:nowrap}
+.import-menu .im-item:hover{background:var(--vio-soft);color:var(--vio)}
 .icobtn{width:38px;height:38px;border-radius:10px;border:1px solid var(--line-2);background:var(--panel);
   color:var(--tx-2);display:grid;place-items:center;cursor:pointer;transition:.15s}
 .icobtn:hover{border-color:var(--vio);color:var(--vio)}
@@ -312,12 +320,15 @@ html[data-theme=dark] .delta-dn{color:#fb7185}
       <select id="fCliente"><option value="">Todos os clientes</option></select>
       <div class="tabbar" id="fStatusBar" style="margin-bottom:0"></div>
       <select id="fMC" style="max-width:230px"><option value="">Todas as MCs</option></select>
-      <select id="selImportStatus" title="Como classificar as MCs que forem importadas agora">
-        <option value="a_validar">Importar como: A validar</option>
-        <option value="ativo">Importar como: Ativo</option>
-        <option value="finalizado">Importar como: Finalizado</option>
-      </select>
-      <button class="btn" id="btnAdd"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>Importar MC</button>
+      <div style="position:relative">
+        <button class="btn" id="btnAdd"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>Importar MC</button>
+        <div class="import-menu hide" id="importMenu">
+          <div class="im-lbl">Importar como</div>
+          <div class="im-item" data-status="a_validar">A validar</div>
+          <div class="im-item" data-status="ativo">Ativo</div>
+          <div class="im-item" data-status="finalizado">Finalizado</div>
+        </div>
+      </div>
       <button class="icobtn" id="btnExport" title="Exportar CSV"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg></button>
       <button class="icobtn" id="btnClear" title="Limpar painel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg></button>
     </div>
@@ -547,6 +558,7 @@ async function setStatus(id, status){
 /* ---------- store ---------- */
 let MCS=[];
 let FILTRO={cliente:'',busca:'',mc:'',status:''};
+let IMPORT_STATUS='a_validar';  // status aplicado na próxima importação, escolhido no menu do botão Importar MC
 let SORT={col:'dmPct',dir:-1};
 let TAB='gerencial';
 let ESCALA='total';          // 'total' | 'mes'
@@ -571,7 +583,7 @@ async function handleFiles(files){
   showErr('');
   const fd=new FormData();
   for(const f of files) fd.append('files',f,f.name);
-  fd.append('status', el('selImportStatus')?.value || 'a_validar');
+  fd.append('status', IMPORT_STATUS);
   try{
     const res=await fetch('/api/mcs/upload',{method:'POST',credentials:'include',body:fd});
     const data=await res.json();
@@ -939,6 +951,7 @@ function viewMetricas(rs){
     <div class="card-h"><h3>Custo por caixinha do dashboard</h3><p>clique numa barra para abrir as linhas</p></div>
     <div class="card-b"><div class="chart-box" style="height:340px"><canvas id="chCaixas"></canvas></div></div></div>`;
 }
+if(typeof ChartDataLabels!=='undefined') Chart.register(ChartDataLabels);
 let chP=null,chC=null;
 const cFont=()=>({family:'Inter',size:11.5});
 const cGrid=()=>getComputedStyle(document.documentElement).getPropertyValue('--line').trim();
@@ -955,7 +968,9 @@ function drawPilar(){
     options:{responsive:true,maintainAspectRatio:false,cutout:'62%',
       plugins:{legend:{position:'right',labels:{color:cTx(),font:cFont(),boxWidth:10,boxHeight:10,padding:14,usePointStyle:true,pointStyle:'circle'}},
         tooltip:{callbacks:{label:x=>{const s=x.dataset.data.reduce((a,b)=>a+b,0);
-          return ` ${x.label}: ${money(x.raw)} (${s?pct(x.raw/s):'—'})`;}}}}}});
+          return ` ${x.label}: ${money(x.raw)} (${s?pct(x.raw/s):'—'})`;}}},
+        datalabels:{color:'#fff',font:{family:'Inter',size:11,weight:'700'},
+          formatter:(v,ctx)=>{ const s=ctx.dataset.data.reduce((a,b)=>a+b,0); return v&&s?pct(v/s):''; }}}}});
 }
 function drawCaixas(rs){
   const c=el('chCaixas'); if(!c) return;
@@ -966,8 +981,11 @@ function drawCaixas(rs){
     data:{labels:ord.map(x=>x.n),datasets:[{label:'Custo',data:ord.map(x=>t.caixas[x.k]),
       backgroundColor:ord.map(x=>CX_COLOR[x.k]),borderRadius:6,borderSkipped:false}]},
     options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+      layout:{padding:{right:52}},
       onClick:(e,a)=>{ if(a.length){ DRILL=ord[a[0].index].k; render(); } },
-      plugins:{legend:{display:false},tooltip:{callbacks:{label:x=>` ${money(x.raw)}`}}},
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:x=>` ${money(x.raw)}`}},
+        datalabels:{anchor:'end',align:'right',clamp:true,color:cTx(),font:{family:'Inter',size:11,weight:'600'},
+          formatter:v=>money0(v)}},
       scales:{x:{grid:{color:cGrid()},border:{display:false},ticks:{color:cTx(),font:cFont(),callback:v=>money0(v)}},
         y:{grid:{display:false},border:{display:false},ticks:{color:cTx(),font:cFont()}}}}});
 }
@@ -1300,7 +1318,17 @@ function setTheme(t){
   if(TAB==='metricas'&&!DRILL&&MCS.length){ const rs=rows(); drawPilar(rs); drawCaixas(rs); }
 }
 
-el('btnAdd').onclick=()=>el('fileInput').click();
+el('btnAdd').onclick=e=>{ e.stopPropagation(); el('importMenu').classList.toggle('hide'); };
+el('importMenu').querySelectorAll('[data-status]').forEach(it=>it.onclick=e=>{
+  e.stopPropagation();
+  IMPORT_STATUS=it.dataset.status;
+  el('importMenu').classList.add('hide');
+  el('fileInput').click();
+});
+document.addEventListener('click',e=>{
+  if(!el('importMenu').classList.contains('hide') && !e.target.closest('#importMenu') && e.target.id!=='btnAdd')
+    el('importMenu').classList.add('hide');
+});
 el('drop').onclick=()=>el('fileInput').click();
 el('fileInput').onchange=e=>{ handleFiles([...e.target.files]); e.target.value=''; };
 el('btnExport').onclick=exportCSV;
