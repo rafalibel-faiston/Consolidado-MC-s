@@ -314,6 +314,11 @@ html[data-theme=dark] .delta-dn{color:#fb7185}
         <option value="ativo">Ativo</option><option value="finalizado">Finalizado</option>
         <option value="a_validar">A validar</option></select>
       <select id="fMC" style="max-width:230px"><option value="">Todas as MCs</option></select>
+      <select id="selImportStatus" title="Como classificar as MCs que forem importadas agora">
+        <option value="a_validar">Importar como: A validar</option>
+        <option value="ativo">Importar como: Ativo</option>
+        <option value="finalizado">Importar como: Finalizado</option>
+      </select>
       <button class="btn" id="btnAdd"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>Importar MC</button>
       <button class="icobtn" id="btnExport" title="Exportar CSV"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg></button>
       <button class="icobtn" id="btnClear" title="Limpar painel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg></button>
@@ -568,6 +573,7 @@ async function handleFiles(files){
   showErr('');
   const fd=new FormData();
   for(const f of files) fd.append('files',f,f.name);
+  fd.append('status', el('selImportStatus')?.value || 'a_validar');
   try{
     const res=await fetch('/api/mcs/upload',{method:'POST',credentials:'include',body:fd});
     const data=await res.json();

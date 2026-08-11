@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from io import BytesIO
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -56,12 +56,12 @@ def _refresh_cliente(db: Session, nome: str) -> None:
     cli.mc_direta_total = mcd
 
 
-def _upsert(db: Session, parsed: MC, frontend_mc: dict) -> models.MCRecord:
+def _upsert(db: Session, parsed: MC, frontend_mc: dict, status: str = STATUS_PADRAO) -> models.MCRecord:
     mc_id = frontend_mc["id"]
     rec = db.get(models.MCRecord, mc_id)
     cliente_anterior = rec.cliente if rec else None
     if rec is None:
-        rec = models.MCRecord(id=mc_id, status=STATUS_PADRAO)
+        rec = models.MCRecord(id=mc_id, status=status)
         db.add(rec)
 
     rec.contrato = frontend_mc.get("contrato") or ""
@@ -126,7 +126,12 @@ def atualizar_status(mc_id: str, body: StatusBody, db: Session = Depends(get_db)
 
 
 @router.post("/upload")
-async def upload(files: list[UploadFile] = File(...), db: Session = Depends(get_db)):
+async def upload(
+    files: list[UploadFile] = File(...),
+    status: str = Form(STATUS_PADRAO),
+    db: Session = Depends(get_db),
+):
+    status_novas = status if status in STATUS_VALIDOS else STATUS_PADRAO
     added: list[str] = []
     erros: list[dict] = []
 
@@ -161,7 +166,7 @@ async def upload(files: list[UploadFile] = File(...), db: Session = Depends(get_
             continue
 
         frontend_mc = mc_to_frontend(parsed)
-        _upsert(db, parsed, frontend_mc)
+        _upsert(db, parsed, frontend_mc, status=status_novas)
         added.append(frontend_mc["id"])
         db.add(models.Ingestao(arquivo=f.filename or "", mc_id=frontend_mc["id"], status="ok"))
 
