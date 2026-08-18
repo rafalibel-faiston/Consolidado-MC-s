@@ -216,18 +216,25 @@ duplica. Número de contrato é extraído do nome do arquivo (`CONTRATO_RX` em
 ### Edição manual da MC
 
 Tudo que a MC tem é editável direto no painel, na tela de detalhe: cabeçalho
-(projeto, cliente, produto, responsável, início, fim, meses, comentários), receita
-bruta, fator de imposto, os percentuais de rateio e, linha a linha nos 4 pilares,
-categoria, descrição, detalhe, meses, qtde, valor unitário e custo final.
+(contrato, arquivo, projeto, cliente, produto, responsável, início, fim, meses,
+comentários), receita bruta, fator de imposto, os percentuais de rateio e, linha a
+linha nos 4 pilares, categoria, descrição, detalhe, meses, qtde, valor unitário,
+custo final e a caixinha do dashboard (força uma caixinha manualmente, por linha,
+por cima do de-para automático).
 
 Fluxo: botão **Editar valores** → a tela inteira passa a mostrar o cenário editado
 (KPIs, DRE, caixinhas, auditoria recalculam a cada tecla, client-side) → rodapé fixo
-mostra quantos campos mudaram e o delta de DM/custo → **Salvar alterações** manda
+mostra quantos campos mudaram no total (em qualquer aba, não só a que está na tela —
+`countDirtyFields()` no HTML) e o delta de DM/custo → **Salvar alterações** manda
 `PUT /api/mcs/{id}` e aí sim vira verdade pra equipe toda. **Descartar** joga fora.
 
 - Mexeu em qtde, valor unitário ou meses → o custo final da linha recalcula sozinho
   (`qtde × unit × meses`, meses só se o bloco tiver a coluna). Dá pra digitar o custo
   final por cima, que é como a planilha às vezes faz.
+- Caixinha: por padrão é "Automático" (`classificar()` decide pelo de-para). Escolher
+  uma caixinha específica no select da linha grava `caixaOverride`, que passa a valer
+  sempre — tanto em `classificar()` do backend (`app/caixinhas.py`) quanto no mirror
+  do JS — até alguém voltar pra "Automático" ou reimportar a planilha.
 - O preview client-side (`recalcMC()` no HTML) e o servidor (`app/edicao.py`) usam a
   mesma conta — o servidor reaproveita `calc_dre`/`line_cost`/`classificar` do parser,
   não existe um segundo jeito de calcular MC no projeto. Mexer num lado sem mexer no
@@ -235,10 +242,13 @@ mostra quantos campos mudaram e o delta de DM/custo → **Salvar alterações** 
 - O **5.DRE guardado não é tocado** — ele continua sendo a foto da planilha original.
   Quem edita passa a divergir do DRE de propósito, e a aba Auditoria avisa isso
   (`editado: true` no JSON, badge "editada no painel" no cabeçalho).
-- `contrato` e `arquivo` **não** são editáveis: o id da MC é `"{contrato}|{arquivo}"`
-  e mexer neles quebraria o upsert do upload.
-- Reimportar a mesma planilha sobrescreve a edição (é upsert por id) — a planilha
-  continua sendo a fonte, a edição é ajuste por cima.
+- `contrato` e `arquivo` **são** editáveis, mas formam o id da MC
+  (`"{contrato}|{arquivo}"`): mudar qualquer um dos dois migra o registro pra um id
+  novo (`PUT /api/mcs/{id}` recusa com 400 se já existir outra MC com o novo id). A
+  tela avisa: reimportar depois a planilha original de novo vai criar uma MC nova,
+  não vai mais fazer upsert nesta.
+- Reimportar a mesma planilha sobrescreve a edição inteira, incluindo `caixaOverride`
+  (é upsert por id) — a planilha continua sendo a fonte, a edição é ajuste por cima.
 
 ### Classificação da MC (status)
 

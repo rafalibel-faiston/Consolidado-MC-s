@@ -277,14 +277,16 @@ html[data-theme=dark] .delta-dn{color:#fb7185}
 .sim-note{font-size:12.5px;color:var(--mut);margin-bottom:16px;line-height:1.6}
 
 /* edição da MC */
-input.edin{background:var(--vio-soft);border:1px solid var(--vio-line);color:var(--tx);font-family:inherit;
-  font-size:13px;font-weight:500;padding:7px 9px;border-radius:9px;outline:none;transition:.15s;width:100%}
-input.edin:focus{border-color:var(--vio);box-shadow:0 0 0 3px var(--vio-soft)}
+input.edin,select.edin{background:var(--vio-soft);border:1px solid var(--vio-line);color:var(--tx);font-family:inherit;
+  font-size:13px;font-weight:500;padding:7px 9px;border-radius:9px;outline:none;transition:.15s;width:100%;cursor:auto}
+select.edin{cursor:pointer}
+input.edin:focus,select.edin:focus{border-color:var(--vio);box-shadow:0 0 0 3px var(--vio-soft)}
 input.edin.num{text-align:right;font-variant-numeric:tabular-nums;width:104px}
-input.edin.dirty{background:#fdeafd;border-color:#e9a8ef}
-html[data-theme=dark] input.edin.dirty{background:#3a1440;border-color:#5b1f63}
+input.edin.dirty,select.edin.dirty{background:#fdeafd;border-color:#e9a8ef}
+html[data-theme=dark] input.edin.dirty,html[data-theme=dark] select.edin.dirty{background:#3a1440;border-color:#5b1f63}
 .fgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px}
 .fgrid input.edin{width:100%}
+.ed-warn{font-size:12px;color:var(--warn);margin-top:10px;line-height:1.5}
 .fgrid label{display:block;font-size:10.5px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;
   color:var(--mut);margin-bottom:6px}
 .editbar{position:sticky;bottom:12px;z-index:30;margin-top:20px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;
@@ -454,8 +456,11 @@ const CAIXA_BY_K = Object.fromEntries(CAIXAS.map(c=>[c.k,c]));
 const RX_TEL = /(TELEFON|VOZ|PABX|CELULAR|LINK DE|OMNIPBX|CALL CENTER|E1\b|RAMAL)/;
 const RX_LOC = /(LOCACAO|ALUGUEL|LOCAC|ESPACO COMERCIAL|COMODATO)/;
 
-/* devolve a caixinha de uma linha; usar sempre com o pilar de origem */
+/* devolve a caixinha de uma linha; usar sempre com o pilar de origem.
+   r.caixaOverride força a caixinha manualmente (edição no painel) — se
+   presente e válida, vence qualquer regra do de-para abaixo. */
 function classificar(pilarK, r){
+  if(r && r.caixaOverride && CAIXA_BY_K[r.caixaOverride]) return r.caixaOverride;
   const t = N([r.g1, r.cat, r.desc].filter(Boolean).join(' '));
   if(pilarK === 'campo') return 'campo';
 
@@ -1065,18 +1070,45 @@ function recalcMC(o){
 
 let EDIT=null;        // cópia da MC em edição
 let EDIT_BASE=null;   // a MC como está salva, pra comparar e destacar o que mudou
-let EDIT_DIRTY=0;     // campos alterados, contados enquanto o HTML é montado
+let EDIT_DIRTY=0;     // total de campos alterados em QUALQUER aba — de countDirtyFields(), não só o que a aba atual desenha
 let DET_TAB='resumo';
 const editando = mc => !!(EDIT && mc && EDIT.id===mc.id);
 
 /* número em pt-BR sem separador de milhar — num() lê de volta com vírgula ou ponto */
 const edFmt = v => (v==null||v==='') ? '' : String(v).replace('.',',');
 
-function edDirty(path){
-  if(!EDIT_BASE) return false;
-  const a=getPath(EDIT_BASE,path), b=getPath(EDIT,path);
+function edDiff(a,b){
   if(typeof a==='number' || typeof b==='number') return Math.abs((a||0)-(b||0))>1e-9;
   return String(a==null?'':a)!==String(b==null?'':b);
+}
+function edDirty(path){
+  if(!EDIT_BASE) return false;
+  return edDiff(getPath(EDIT_BASE,path), getPath(EDIT,path));
+}
+
+/* conta TODO campo editável que difere de EDIT_BASE, mesmo o que não está
+   sendo mostrado na aba atual — o rodapé precisa refletir a edição inteira,
+   não só o que essa aba desenhou */
+const META_ED = ['contrato','arquivo','cliente','projeto','produto','responsavel',
+  'comentarios','inicio','fim','mesesContrato','receita','impostoFator'];
+const LINHA_ED = ['cat','desc','g1','extra','meses','qtd','unit','total','caixaOverride'];
+function countDirtyFields(){
+  if(!EDIT_BASE||!EDIT) return 0;
+  let n=0;
+  META_ED.forEach(k=>{ if(edDiff(EDIT_BASE[k],EDIT[k])) n++; });
+  (EDIT.rateios||[]).forEach((r,i)=>{
+    const br=(EDIT_BASE.rateios||[])[i];
+    if(edDiff(br?br.p:null, r.p)) n++;
+  });
+  PILARES.forEach(p=>{
+    const baseRows=((EDIT_BASE.blocos||{})[p.k]||{}).rows||[];
+    const rows=((EDIT.blocos||{})[p.k]||{}).rows||[];
+    rows.forEach((r,i)=>{
+      const br=baseRows[i]||{};
+      LINHA_ED.forEach(f=>{ if(edDiff(br[f],r[f])) n++; });
+    });
+  });
+  return n;
 }
 
 /* kind: 'text' | 'num' | 'pct' (guardado como fração, mostrado como %) */
@@ -1085,10 +1117,19 @@ function edIn(path,kind,style){
   const val = kind==='text' ? (raw==null?'':raw)
             : kind==='pct'  ? edFmt(raw==null?'':+(raw*100).toFixed(6))
             : edFmt(raw==null?'':raw);
-  const d=edDirty(path); if(d) EDIT_DIRTY++;
+  const d=edDirty(path);
   return `<input class="edin ${kind==='text'?'':'num'} ${d?'dirty':''}" type="text"
     ${kind==='text'?'':'inputmode="decimal"'} data-path="${path}" data-kind="${kind}"
     value="${esc(val)}"${style?` style="${style}"`:''}>`;
+}
+
+/* select de caixinha manual — "Automático" deixa o de-para decidir sozinho */
+function edCaixaSelect(path){
+  const raw=getPath(EDIT,path);
+  const d=edDirty(path);
+  const opts=[`<option value=""${raw?'':' selected'}>Automático</option>`]
+    .concat(CAIXAS.map(c=>`<option value="${c.k}"${raw===c.k?' selected':''}>${esc(c.n)}</option>`));
+  return `<select class="edin ${d?'dirty':''}" data-path="${path}" data-kind="caixa">${opts.join('')}</select>`;
 }
 
 function cardEdicao(mc){
@@ -1097,6 +1138,8 @@ function cardEdicao(mc){
     <div class="card-h"><h3>Campos da MC</h3>
       <p>edite à vontade — tudo recalcula na hora e só passa a valer pra equipe quando você salvar</p></div>
     <div class="card-b"><div class="fgrid">
+      ${f('Contrato',edIn('contrato','text'))}
+      ${f('Arquivo',edIn('arquivo','text'))}
       ${f('Projeto',edIn('projeto','text'))}
       ${f('Cliente',edIn('cliente','text'))}
       ${f('Produto',edIn('produto','text'))}
@@ -1108,7 +1151,10 @@ function cardEdicao(mc){
       ${f('Impostos (%)',edIn('impostoFator','pct'))}
       ${(mc.rateios||[]).map((r,i)=>f(esc(r.nome||'Rateio')+' (%)',edIn(`rateios.${i}.p`,'pct'))).join('')}
       ${f('Comentários',edIn('comentarios','text'))}
-    </div></div></div>`;
+    </div>
+    <div class="ed-warn">Contrato e arquivo formam o identificador desta MC. Mudar aqui e depois reimportar a
+      planilha original de novo vai criar uma MC nova, não vai mais atualizar esta.</div>
+    </div></div>`;
 }
 
 function editBar(base,view){
@@ -1129,9 +1175,10 @@ function editBar(base,view){
 }
 
 function bindEdit(){
-  document.querySelectorAll('input.edin').forEach(inp=>inp.oninput=e=>{
+  const onEdit=e=>{
     const {path,kind}=e.target.dataset;
     const v = kind==='text' ? e.target.value
+            : kind==='caixa' ? (e.target.value||null)
             : kind==='pct'  ? num(e.target.value)/100
             : num(e.target.value);
     setPath(EDIT,path,v);
@@ -1142,7 +1189,9 @@ function bindEdit(){
       r.total=lineCost(r);
     }
     redrawDetalhe(e.target);
-  });
+  };
+  document.querySelectorAll('input.edin').forEach(inp=>inp.oninput=onEdit);
+  document.querySelectorAll('select.edin').forEach(sel=>sel.onchange=onEdit);
 }
 
 let edTimer=null;
@@ -1154,8 +1203,8 @@ function redrawDetalhe(focusEl){
   edTimer=setTimeout(()=>{
     renderDetalhe(EDIT_BASE, DET_TAB);
     if(path){
-      const back=document.querySelector(`input.edin[data-path="${path}"]`);
-      if(back){ back.value=txt; back.focus(); try{back.setSelectionRange(pos,pos);}catch(e){} }
+      const back=document.querySelector(`.edin[data-path="${path}"]`);
+      if(back){ if(back.tagName!=='SELECT') back.value=txt; back.focus(); try{back.setSelectionRange(pos,pos);}catch(e){} }
     }
   },350);
 }
@@ -1165,8 +1214,10 @@ function editPayload(o){
   const blocos={};
   PILARES.forEach(p=>blocos[p.k]=((o.blocos[p.k]||{}).rows||[]).map(r=>({
     cat:r.cat, desc:r.desc, g1:r.g1, extra:r.extra,
-    meses:r.meses, qtd:r.qtd, unit:r.unit, total:r.total, hm:r.hm})));
+    meses:r.meses, qtd:r.qtd, unit:r.unit, total:r.total, hm:r.hm,
+    caixaOverride:r.caixaOverride||null})));
   return {
+    contrato:o.contrato, arquivo:o.arquivo,
     cliente:o.cliente, projeto:o.projeto, produto:o.produto, responsavel:o.responsavel,
     comentarios:o.comentarios, inicio:o.inicio, fim:o.fim, mesesContrato:o.mesesContrato,
     receita:o.receita, impostoFator:o.impostoFator,
@@ -1177,20 +1228,25 @@ function editPayload(o){
 
 async function salvarEdicao(){
   if(!EDIT) return;
-  const id=EDIT.id, tab=DET_TAB;
+  const oldId=EDIT.id, tab=DET_TAB;
   const btn=el('btnSalvar'); if(btn){ btn.disabled=true; btn.textContent='Salvando...'; }
+  let novo;
   try{
-    const res=await fetch(`/api/mcs/${encodeURIComponent(id)}`,{method:'PUT',credentials:'include',
+    const res=await fetch(`/api/mcs/${encodeURIComponent(oldId)}`,{method:'PUT',credentials:'include',
       headers:{'Content-Type':'application/json'}, body:JSON.stringify(editPayload(EDIT))});
-    if(!res.ok) throw new Error('HTTP '+res.status);
+    if(!res.ok){
+      const err=await res.json().catch(()=>null);
+      throw new Error(err&&err.detail ? err.detail : 'HTTP '+res.status);
+    }
+    novo=await res.json();
   }catch(e){
     if(btn){ btn.disabled=false; btn.textContent='Salvar alterações'; }
-    alert('Não consegui salvar as alterações no servidor. Tente de novo.');
+    alert(e.message||'Não consegui salvar as alterações no servidor. Tente de novo.');
     return;
   }
   EDIT=null; EDIT_BASE=null;
   await loadMCs();
-  const mc=MCS.find(m=>m.id===id);
+  const mc=MCS.find(m=>m.id===(novo&&novo.id))||MCS.find(m=>m.id===oldId);
   if(mc) renderDetalhe(mc,tab); else voltar();
 }
 
@@ -1222,8 +1278,7 @@ function renderDetalhe(mcBase,tab){
   const mc=ed?recalcMC(EDIT):mcBase;   /* em edição a tela toda mostra o cenário editado */
   const alerta=mc.divergencias.length||mc.linhasForaDaConta.length;
 
-  /* o corpo vem primeiro: é ele que conta os campos alterados pro rodapé */
-  EDIT_DIRTY=0;
+  EDIT_DIRTY=ed?countDirtyFields():0;
   let body='';
   if(tab==='resumo') body=tabResumo(mc);
   else if(tab==='caixas') body=tabCaixas(mc);
@@ -1367,7 +1422,8 @@ function tabPilar(mc,k){
       const cx=classificar(k,r), ed=editando(mc), b=`blocos.${k}.rows.${i}`;
       return `<tr>
       <td class="mono muted">${i+1}</td>
-      <td><span class="aba" data-gocaixa="${cx}" style="cursor:pointer;border-color:${CX_COLOR[cx]};color:${CX_COLOR[cx]}">${CAIXA_BY_K[cx].n}</span></td>
+      <td style="min-width:${ed?'150px':'auto'}">${ed?edCaixaSelect(b+'.caixaOverride')
+        :`<span class="aba" data-gocaixa="${cx}" style="cursor:pointer;border-color:${CX_COLOR[cx]};color:${CX_COLOR[cx]}">${CAIXA_BY_K[cx].n}</span>`}</td>
       <td>${ed?edIn(b+'.cat','text'):`<b>${esc(r.cat)||'<span class="zero">—</span>'}</b>`}</td>
       <td style="max-width:300px;min-width:${ed?'230px':'auto'}">${ed?edIn(b+'.desc','text'):(esc(r.desc)||'<span class="zero">—</span>')}</td>
       <td class="muted" style="font-size:12px;max-width:200px">${ed?edIn(b+'.extra','text'):esc(r.extra)}</td>

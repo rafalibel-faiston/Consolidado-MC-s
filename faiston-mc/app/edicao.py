@@ -9,17 +9,28 @@ e **recalculamos tudo** com o mesmo núcleo do parser (`calc_dre`, `line_cost`,
 
 O 5.DRE original NÃO é tocado — ele continua sendo a foto da planilha. Quem
 edita passa a divergir do DRE de propósito, e a aba Auditoria mostra isso.
+
+Duas coisas merecem cuidado extra:
+- `contrato` e `arquivo` são editáveis, mas formam o id da MC
+  ("{contrato}|{arquivo}"). Editá-los muda `out["id"]`; quem chama esta função
+  (routes/mcs.py::editar) precisa comparar com o id antigo e migrar o registro
+  no banco quando ele mudar.
+- cada linha pode trazer `caixaOverride` — força a caixinha do dashboard na
+  mão, ignorando o de-para automático de `classificar()`.
 """
 from __future__ import annotations
 
 from typing import Any
 
-from .caixinhas import classificar
+from .caixinhas import CAIXA_BY_K, classificar
 from .parser import PILARES, Linha, calc_dre, line_cost, num
 
-# campos de cabeçalho que dá pra editar no painel (contrato e arquivo ficam de
-# fora: o id da MC é "{contrato}|{arquivo}" e mexer neles quebraria o upsert)
-META_TEXTO = ("cliente", "projeto", "produto", "responsavel", "comentarios", "inicio", "fim")
+# campos de cabeçalho que dá pra editar no painel. contrato e arquivo entram
+# aqui também — formam o id da MC ("{contrato}|{arquivo}"), então mexer neles
+# muda o id; quem chama aplicar_edicao precisa comparar out["id"] com o id
+# antigo e migrar o registro (ver routes/mcs.py::editar).
+META_TEXTO = ("cliente", "projeto", "produto", "responsavel", "comentarios", "inicio", "fim",
+              "contrato", "arquivo")
 
 
 def _txt(v: Any) -> str:
@@ -35,11 +46,14 @@ def _linha_dict(r: dict, hm_base: int = 0) -> dict:
     meses = num(r.get("meses"))
     calc = line_cost(qtd, unit, meses, hm)
     total = num(r.get("total")) if r.get("total") is not None else calc
+    caixa_override = _txt(r.get("caixaOverride"))
+    if caixa_override not in CAIXA_BY_K:
+        caixa_override = ""
     return {
         "cat": _txt(r.get("cat")), "desc": _txt(r.get("desc")),
         "g1": _txt(r.get("g1")), "extra": _txt(r.get("extra")),
         "meses": meses, "qtd": qtd, "unit": unit, "total": total,
-        "hm": hm, "calc": calc,
+        "hm": hm, "calc": calc, "caixaOverride": caixa_override or None,
     }
 
 
@@ -51,12 +65,14 @@ def _linhas_de(blocos: dict) -> tuple[list[Linha], dict[str, float]]:
         bloco = blocos.get(k) or {}
         do_pilar: list[Linha] = []
         for i, r in enumerate(bloco.get("rows") or []):
+            override = r.get("caixaOverride") or ""
             l = Linha(
                 pilar_k=k, pilar=p["n"], aba=bloco.get("sheet") or "", idx=i + 1,
                 cat=r.get("cat", ""), desc=r.get("desc", ""),
                 extra=r.get("extra", ""), g1=r.get("g1", ""),
                 meses=num(r.get("meses")), qtd=num(r.get("qtd")), unit=num(r.get("unit")),
                 total=num(r.get("total")), hm=int(r.get("hm") or 0), calc=num(r.get("calc")),
+                caixa_override=override if override in CAIXA_BY_K else "",
             )
             l.caixa = classificar(l)
             do_pilar.append(l)
@@ -72,6 +88,7 @@ def aplicar_edicao(dados: dict, edit: dict) -> tuple[dict, list[Linha]]:
     for k in META_TEXTO:
         if edit.get(k) is not None:
             out[k] = _txt(edit[k])
+    out["id"] = f'{out.get("contrato", "")}|{out.get("arquivo", "")}'
 
     if "mesesContrato" in edit:
         m = int(num(edit.get("mesesContrato")))

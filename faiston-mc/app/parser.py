@@ -187,6 +187,7 @@ class Linha:
     hm: int = 0          # o bloco tem coluna de meses?
     calc: float = 0.0    # qtd * unit * (meses se hm)
     caixa: str = "nao"
+    caixa_override: str = ""  # força a caixinha na mão (edição no painel) — vazio = automático
 
     def to_dict(self) -> dict:
         return {

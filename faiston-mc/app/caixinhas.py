@@ -38,6 +38,10 @@ RX_LOC = re.compile(r"(LOCACAO|ALUGUEL|LOCAC|ESPACO COMERCIAL|COMODATO)")
 
 
 def classificar(l: "Linha") -> str:
+    override = getattr(l, "caixa_override", "") or ""
+    if override and override in CAIXA_BY_K:
+        return override
+
     t = norm(" ".join(x for x in (l.g1, l.cat, l.desc) if x))
     pilar_k = l.pilar_k
 

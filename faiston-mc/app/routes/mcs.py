@@ -139,6 +139,10 @@ def editar(mc_id: str, body: dict = Body(...), db: Session = Depends(get_db)):
 
     Recalcula custo, MC do projeto, MC direta e as caixinhas com o núcleo do
     parser; o 5.DRE guardado continua sendo a foto da planilha original.
+
+    Contrato e arquivo também são editáveis — como formam o id da MC
+    ("{contrato}|{arquivo}"), mudar qualquer um dos dois migra o registro pra
+    um id novo (rejeita se já existir outra MC com esse id).
     """
     rec = db.get(models.MCRecord, mc_id)
     if not rec:
@@ -149,9 +153,23 @@ def editar(mc_id: str, body: dict = Body(...), db: Session = Depends(get_db)):
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"não consegui aplicar a edição ({e})")
 
+    status_atual = rec.status
     cliente_anterior = rec.cliente
+    novo_id = dados.get("id") or mc_id
+
+    if novo_id != mc_id:
+        if db.get(models.MCRecord, novo_id) is not None:
+            raise HTTPException(
+                status_code=400,
+                detail="já existe uma MC com esse contrato + arquivo — escolha outro valor",
+            )
+        db.delete(rec)
+        db.flush()
+        rec = models.MCRecord(id=novo_id, status=status_atual)
+        db.add(rec)
+
     _aplicar_totais(rec, dados)
-    _gravar_linhas(db, mc_id, linhas)
+    _gravar_linhas(db, novo_id, linhas)
     db.flush()
     if cliente_anterior and cliente_anterior != rec.cliente:
         _refresh_cliente(db, cliente_anterior)
