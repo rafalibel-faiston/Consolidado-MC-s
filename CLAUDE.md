@@ -153,6 +153,7 @@ faiston-mc/
   app/
     parser.py       # leitura das planilhas — porta validada do parser client-side
     caixinhas.py     # de-para linha → caixinha (classificar / soma_caixas)
+    edicao.py         # aplica a edição manual de uma MC e recalcula tudo
     compat.py        # serializa o MC no MESMO formato de objeto que o front espera
     models.py         # SQLAlchemy: MCRecord, MCLinha, Ingestao, Cliente
     database.py        # engine/session, cria/migra as tabelas no startup
@@ -200,6 +201,7 @@ POST /api/mcs/upload        multipart (files[]) → parse no servidor → upsert
 GET  /api/mcs                lista todas as MCs (formato compatível com o front)
 GET  /api/mcs/{id}            detalhe de uma MC
 PATCH /api/mcs/{id}/status    troca a classificação (ativo/finalizado/a_validar)
+PUT  /api/mcs/{id}            salva a edição manual da MC (campos + linhas) e recalcula tudo
 DELETE /api/mcs/{id}          remove uma MC
 POST /api/mcs/clear           remove todas (usado pelo botão "Limpar painel")
 GET  /api/clientes            consolidado por cliente (contratos, receita, custo, MC)
@@ -210,6 +212,33 @@ duplica. Número de contrato é extraído do nome do arquivo (`CONTRATO_RX` em
 `parser.py`): uma letra (`F`, `C`, ...) + 6 dígitos, com sufixo opcional `-N` ou
 `-N` + uma letra (`F221082-6`, `C260020-2B`). Não tem fallback pra `1.DADOS_INICIAIS`
 — se o nome do arquivo não bater com o padrão, contrato fica vazio.
+
+### Edição manual da MC
+
+Tudo que a MC tem é editável direto no painel, na tela de detalhe: cabeçalho
+(projeto, cliente, produto, responsável, início, fim, meses, comentários), receita
+bruta, fator de imposto, os percentuais de rateio e, linha a linha nos 4 pilares,
+categoria, descrição, detalhe, meses, qtde, valor unitário e custo final.
+
+Fluxo: botão **Editar valores** → a tela inteira passa a mostrar o cenário editado
+(KPIs, DRE, caixinhas, auditoria recalculam a cada tecla, client-side) → rodapé fixo
+mostra quantos campos mudaram e o delta de DM/custo → **Salvar alterações** manda
+`PUT /api/mcs/{id}` e aí sim vira verdade pra equipe toda. **Descartar** joga fora.
+
+- Mexeu em qtde, valor unitário ou meses → o custo final da linha recalcula sozinho
+  (`qtde × unit × meses`, meses só se o bloco tiver a coluna). Dá pra digitar o custo
+  final por cima, que é como a planilha às vezes faz.
+- O preview client-side (`recalcMC()` no HTML) e o servidor (`app/edicao.py`) usam a
+  mesma conta — o servidor reaproveita `calc_dre`/`line_cost`/`classificar` do parser,
+  não existe um segundo jeito de calcular MC no projeto. Mexer num lado sem mexer no
+  outro faz o preview mentir.
+- O **5.DRE guardado não é tocado** — ele continua sendo a foto da planilha original.
+  Quem edita passa a divergir do DRE de propósito, e a aba Auditoria avisa isso
+  (`editado: true` no JSON, badge "editada no painel" no cabeçalho).
+- `contrato` e `arquivo` **não** são editáveis: o id da MC é `"{contrato}|{arquivo}"`
+  e mexer neles quebraria o upsert do upload.
+- Reimportar a mesma planilha sobrescreve a edição (é upsert por id) — a planilha
+  continua sendo a fonte, a edição é ajuste por cima.
 
 ### Classificação da MC (status)
 
@@ -265,6 +294,10 @@ Alembic por enquanto, é cedo pro projeto pra valer a complexidade de migrations
 - Parsing das planilhas roda no backend (Python), não mais no navegador — só o
   simulador (`calcDRE`/`lineCost`/`classificar` do JS) continua client-side, porque é
   cenário hipotético que não deveria bater no servidor a cada tecla
+- Valores editáveis no painel com preview ao vivo e save explícito (a Bruna pediu em
+  18/08/2026): simular e manter a alteração sem precisar mexer na planilha
+- Header enxuto: só a marca Faiston. O selo "OPS" e o rótulo "Margem de Contribuição"
+  do topo saíram a pedido do Rafael (18/08/2026) — o H1 da página já diz isso
 - **Sem autenticação** (revertido em 10/08/2026 — tinha senha única antes). Painel
   público pra quem tiver a URL. Decisão explícita do Rafael, sabendo do risco pro
   dado de margem/custo — não reabrir sem ele pedir
@@ -317,3 +350,6 @@ Planilhas de referência: `MC F260153-2 NTT - Instalação.xlsx` e
   (decisão explícita, seção 4) — não linkar a URL do Railway fora da equipe
 - Mudar `classificar()` num lado (`app/caixinhas.py` ou o JS do front) sem mudar no
   outro quebra a sincronia entre o que a ingestão grava e o que o simulador mostra
+- Mesma coisa pro recálculo da edição: `recalcMC()` (front) e `app/edicao.py` (back)
+  precisam continuar dando o mesmo número, senão o preview promete uma coisa e o
+  salvar entrega outra

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from io import BytesIO
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -10,7 +10,8 @@ from sqlalchemy.orm import Session
 from .. import models
 from ..compat import mc_to_frontend
 from ..database import get_db
-from ..parser import MC, parse_mc
+from ..edicao import aplicar_edicao
+from ..parser import MC, Linha, parse_mc
 
 router = APIRouter(prefix="/api/mcs", tags=["mcs"])
 
@@ -64,22 +65,19 @@ def _upsert(db: Session, parsed: MC, frontend_mc: dict, status: str = STATUS_PAD
         rec = models.MCRecord(id=mc_id, status=status)
         db.add(rec)
 
-    rec.contrato = frontend_mc.get("contrato") or ""
-    rec.cliente = frontend_mc.get("cliente") or ""
-    rec.projeto = frontend_mc.get("projeto") or ""
-    rec.arquivo = frontend_mc.get("arquivo") or ""
-    rec.receita = frontend_mc.get("receita")
-    rec.receita_liq = frontend_mc.get("receitaLiq")
-    rec.custo = frontend_mc.get("custo")
-    rec.mc_projeto = frontend_mc.get("mcProjeto")
-    rec.mc_projeto_pct = frontend_mc.get("mcProjetoPct")
-    rec.mc_direta = frontend_mc.get("mcDireta")
-    rec.mc_direta_pct = frontend_mc.get("mcDiretaPct")
-    rec.alerta = bool(parsed.divergencias or parsed.linhas_fora)
-    rec.dados = frontend_mc
+    _aplicar_totais(rec, frontend_mc)
+    _gravar_linhas(db, mc_id, parsed.linhas)
 
+    db.flush()
+    if cliente_anterior and cliente_anterior != rec.cliente:
+        _refresh_cliente(db, cliente_anterior)
+    _refresh_cliente(db, rec.cliente)
+    return rec
+
+
+def _gravar_linhas(db: Session, mc_id: str, linhas: list[Linha]) -> None:
     db.query(models.MCLinha).filter(models.MCLinha.mc_id == mc_id).delete()
-    for l in parsed.linhas:
+    for l in linhas:
         db.add(models.MCLinha(
             mc_id=mc_id, pilar_k=l.pilar_k, pilar=l.pilar, aba=l.aba, idx=l.idx,
             cat=l.cat, desc=l.desc, extra=l.extra, g1=l.g1,
@@ -87,11 +85,21 @@ def _upsert(db: Session, parsed: MC, frontend_mc: dict, status: str = STATUS_PAD
             hm=l.hm, calc=l.calc, caixa=l.caixa,
         ))
 
-    db.flush()
-    if cliente_anterior and cliente_anterior != rec.cliente:
-        _refresh_cliente(db, cliente_anterior)
-    _refresh_cliente(db, rec.cliente)
-    return rec
+
+def _aplicar_totais(rec: models.MCRecord, dados: dict) -> None:
+    rec.contrato = dados.get("contrato") or ""
+    rec.cliente = dados.get("cliente") or ""
+    rec.projeto = dados.get("projeto") or ""
+    rec.arquivo = dados.get("arquivo") or ""
+    rec.receita = dados.get("receita")
+    rec.receita_liq = dados.get("receitaLiq")
+    rec.custo = dados.get("custo")
+    rec.mc_projeto = dados.get("mcProjeto")
+    rec.mc_projeto_pct = dados.get("mcProjetoPct")
+    rec.mc_direta = dados.get("mcDireta")
+    rec.mc_direta_pct = dados.get("mcDiretaPct")
+    rec.alerta = bool(dados.get("divergencias") or dados.get("linhasForaDaConta"))
+    rec.dados = dados
 
 
 @router.get("")
@@ -121,6 +129,33 @@ def atualizar_status(mc_id: str, body: StatusBody, db: Session = Depends(get_db)
         raise HTTPException(status_code=404, detail="MC não encontrada")
     rec.status = body.status
     rec.dados = {**rec.dados, "status": body.status}
+    db.commit()
+    return _serialize(rec)
+
+
+@router.put("/{mc_id}")
+def editar(mc_id: str, body: dict = Body(...), db: Session = Depends(get_db)):
+    """Salva a edição manual da MC — mesma coisa que a Bruna vê simulada na tela.
+
+    Recalcula custo, MC do projeto, MC direta e as caixinhas com o núcleo do
+    parser; o 5.DRE guardado continua sendo a foto da planilha original.
+    """
+    rec = db.get(models.MCRecord, mc_id)
+    if not rec:
+        raise HTTPException(status_code=404, detail="MC não encontrada")
+
+    try:
+        dados, linhas = aplicar_edicao(rec.dados or {}, body or {})
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"não consegui aplicar a edição ({e})")
+
+    cliente_anterior = rec.cliente
+    _aplicar_totais(rec, dados)
+    _gravar_linhas(db, mc_id, linhas)
+    db.flush()
+    if cliente_anterior and cliente_anterior != rec.cliente:
+        _refresh_cliente(db, cliente_anterior)
+    _refresh_cliente(db, rec.cliente)
     db.commit()
     return _serialize(rec)
 
