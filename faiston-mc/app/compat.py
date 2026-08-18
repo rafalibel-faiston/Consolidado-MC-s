@@ -17,7 +17,7 @@ def _row_json(l: Linha) -> dict:
     return {
         "cat": l.cat, "desc": l.desc, "g1": l.g1, "extra": l.extra,
         "meses": l.meses, "qtd": l.qtd, "unit": l.unit, "total": l.total,
-        "hm": l.hm, "calc": l.calc,
+        "hm": l.hm, "calc": l.calc, "caixaOverride": l.caixa_override or None,
     }
 
 
