@@ -220,7 +220,11 @@ Tudo que a MC tem é editável direto no painel, na tela de detalhe: cabeçalho
 comentários), receita bruta, fator de imposto, os percentuais de rateio e, linha a
 linha nos 4 pilares, categoria, descrição, detalhe, meses, qtde, valor unitário,
 custo final e a caixinha do dashboard (força uma caixinha manualmente, por linha,
-por cima do de-para automático).
+por cima do de-para automático). Cada pilar também tem **+ Nova linha** (adiciona
+uma linha em branco no fim da tabela, pra "gastar mais" numa caixinha que ainda
+não tem linha nenhuma) e um ✕ por linha pra remover — dá pra montar a composição
+de qualquer uma das 14 caixinhas do zero, direto no painel, sem precisar que a
+linha já exista na planilha original.
 
 Fluxo: botão **Editar valores** → a tela inteira passa a mostrar o cenário editado
 (KPIs, DRE, caixinhas, auditoria recalculam a cada tecla, client-side) → rodapé fixo

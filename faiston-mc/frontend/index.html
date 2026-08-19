@@ -1107,6 +1107,8 @@ function countDirtyFields(){
       const br=baseRows[i]||{};
       LINHA_ED.forEach(f=>{ if(edDiff(br[f],r[f])) n++; });
     });
+    /* linha adicionada ou removida — a comparação por índice acima não pega isso sozinha */
+    if(baseRows.length!==rows.length) n+=Math.abs(baseRows.length-rows.length);
   });
   return n;
 }
@@ -1402,12 +1404,35 @@ function tabResumo(mc){
   return h;
 }
 
+const HM_PADRAO = {equipe:1, campo:1, log:0, invest:1};   // 2.3 não tem coluna de meses
+
+/* adiciona uma linha em branco no pilar k — dá pra jogar ela em qualquer
+   caixinha depois pelo seletor da linha, é assim que se "gasta mais" numa
+   caixinha sem precisar que ela já exista na planilha original */
+function addLinha(k){
+  if(!EDIT) return;
+  const bloco = EDIT.blocos[k] || (EDIT.blocos[k] = {rows:[], sheet:''});
+  const hm = bloco.rows.length ? bloco.rows[0].hm : (HM_PADRAO[k] ?? 1);
+  bloco.rows.push({cat:'', desc:'', g1:'', extra:'', meses:0, qtd:0, unit:0, total:0, hm, calc:0, caixaOverride:null});
+  DET_TAB=k;
+  renderDetalhe(EDIT_BASE, k);
+}
+function removerLinha(k,i){
+  if(!EDIT) return;
+  if(!confirm('Remover esta linha da MC?')) return;
+  EDIT.blocos[k].rows.splice(i,1);
+  renderDetalhe(EDIT_BASE, DET_TAB);
+}
+
 function tabPilar(mc,k){
-  const p=PILARES.find(x=>x.k===k), rows=mc.blocos[k].rows||[];
-  if(!rows.length) return `<div class="card"><div class="card-b muted">Nenhuma linha preenchida em <b>${p.n}</b> nesta MC.</div></div>`;
+  const p=PILARES.find(x=>x.k===k), rows=mc.blocos[k].rows||[], ed=editando(mc);
+  if(!rows.length){
+    return `<div class="card"><div class="card-b muted">Nenhuma linha preenchida em <b>${p.n}</b> nesta MC.
+      ${ed?`<div style="margin-top:12px"><button class="btn ghost sm" onclick="addLinha('${k}')">+ Nova linha</button></div>`:''}</div></div>`;
+  }
   const tot=rows.reduce((a,r)=>a+r.total,0);
   const byCat={}; rows.forEach(r=>{const c=r.cat||'(sem categoria)'; byCat[c]=(byCat[c]||0)+r.total;});
-  return `<div class="muted" style="font-size:12.5px;margin-bottom:14px">Aba <b>${esc(mc.blocos[k].sheet||'')}</b> da planilha${editando(mc)?' · <b>modo edição</b>: mexeu em qtde, valor unitário ou meses, o custo final da linha recalcula sozinho (dá pra digitar o custo final por cima também)':''}</div>
+  return `<div class="muted" style="font-size:12.5px;margin-bottom:14px">Aba <b>${esc(mc.blocos[k].sheet||'')}</b> da planilha${ed?' · <b>modo edição</b>: mexeu em qtde, valor unitário ou meses, o custo final da linha recalcula sozinho (dá pra digitar o custo final por cima também) — dá pra adicionar ou remover linha e jogar qualquer uma pra qualquer caixinha':''}</div>
   <div class="pilares" style="margin-bottom:16px">
     ${Object.entries(byCat).sort((a,b)=>b[1]-a[1]).map(([c,v])=>`
       <div class="pilar ${p.cls}"><div class="tp"><div class="nm">${esc(c)}</div><div class="pc">${pct(tot?v/tot:0)}</div></div>
@@ -1417,9 +1442,9 @@ function tabPilar(mc,k){
   <div class="card"><div class="card-b flush"><div class="tbl-wrap"><table>
     <thead><tr><th>#</th><th>Caixinha</th><th>Categoria</th><th>Descrição</th><th>Detalhe</th>
       <th class="num">Meses</th><th class="num">Qtde</th><th class="num">Vlr unit.</th>
-      <th class="num">Custo final</th><th class="num">% do pilar</th></tr></thead>
+      <th class="num">Custo final</th><th class="num">% do pilar</th>${ed?'<th></th>':''}</tr></thead>
     <tbody>${rows.map((r,i)=>{
-      const cx=classificar(k,r), ed=editando(mc), b=`blocos.${k}.rows.${i}`;
+      const cx=classificar(k,r), b=`blocos.${k}.rows.${i}`;
       return `<tr>
       <td class="mono muted">${i+1}</td>
       <td style="min-width:${ed?'150px':'auto'}">${ed?edCaixaSelect(b+'.caixaOverride')
@@ -1431,9 +1456,12 @@ function tabPilar(mc,k){
       <td class="num mono ${r.qtd?'':'zero'}">${ed?edIn(b+'.qtd','num'):qty(r.qtd)}</td>
       <td class="num mono ${r.unit?'':'zero'}">${ed?edIn(b+'.unit','num'):money(r.unit)}</td>
       <td class="num mono ${r.total?'':'zero'}">${ed?edIn(b+'.total','num'):`<b>${money(r.total)}</b>`}</td>
-      <td class="num mono muted">${tot?pct(r.total/tot):'—'}</td></tr>`}).join('')}</tbody>
-    <tfoot><tr><td colspan="8">Total ${p.n}</td><td class="num mono">${money(tot)}</td><td></td></tr></tfoot>
-  </table></div></div></div>`;
+      <td class="num mono muted">${tot?pct(r.total/tot):'—'}</td>
+      ${ed?`<td><button class="btn ghost sm" title="Remover linha" onclick="removerLinha('${k}',${i})" style="padding:5px 9px">✕</button></td>`:''}</tr>`}).join('')}</tbody>
+    <tfoot><tr><td colspan="8">Total ${p.n}</td><td class="num mono">${money(tot)}</td><td></td>${ed?'<td></td>':''}</tr></tfoot>
+  </table></div></div>
+  ${ed?`<div class="card-b" style="padding-top:0"><button class="btn ghost sm" onclick="addLinha('${k}')">+ Nova linha</button></div>`:''}
+  </div>`;
 }
 
 function tabAuditoria(mc){
