@@ -226,6 +226,13 @@ não tem linha nenhuma) e um ✕ por linha pra remover — dá pra montar a comp
 de qualquer uma das 14 caixinhas do zero, direto no painel, sem precisar que a
 linha já exista na planilha original.
 
+Clicar numa caixinha **dentro do detalhe de uma MC** (aba Caixinhas ou o badge de
+cada linha nas abas dos pilares) abre as linhas dela sem sair do detalhe nem do
+modo edição — é o mesmo drill-down por caixinha que existe na carteira consolidada
+(`viewDrill`), só que embutido no detalhe (`tabDrillCaixa`) pra continuar editável.
+O drill-down da carteira (fora de uma MC, várias MCs de uma vez) continua só
+leitura — editar ali não faz sentido porque pode misturar mais de uma MC.
+
 Fluxo: botão **Editar valores** → a tela inteira passa a mostrar o cenário editado
 (KPIs, DRE, caixinhas, auditoria recalculam a cada tecla, client-side) → rodapé fixo
 mostra quantos campos mudaram no total (em qualquer aba, não só a que está na tela —

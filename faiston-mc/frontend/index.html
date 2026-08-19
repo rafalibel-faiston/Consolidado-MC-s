@@ -1072,6 +1072,7 @@ let EDIT=null;        // cópia da MC em edição
 let EDIT_BASE=null;   // a MC como está salva, pra comparar e destacar o que mudou
 let EDIT_DIRTY=0;     // total de campos alterados em QUALQUER aba — de countDirtyFields(), não só o que a aba atual desenha
 let DET_TAB='resumo';
+let DRILL_CX=null;    // caixinha aberta dentro do detalhe da MC (sobrepõe a aba atual, sem sair do detalhe/edição)
 const editando = mc => !!(EDIT && mc && EDIT.id===mc.id);
 
 /* número em pt-BR sem separador de milhar — num() lê de volta com vírgula ou ponto */
@@ -1258,7 +1259,7 @@ async function salvarEdicao(){
 let SIM=null;
 function openDetalhe(id){
   const mc=MCS.find(m=>m.id===id); if(!mc) return;
-  SIM=null; EDIT=null; EDIT_BASE=null;
+  SIM=null; EDIT=null; EDIT_BASE=null; DRILL_CX=null;
   el('viewCarteira').classList.add('hide');
   el('viewDetalhe').classList.remove('hide');
   window.scrollTo(0,0);
@@ -1282,7 +1283,8 @@ function renderDetalhe(mcBase,tab){
 
   EDIT_DIRTY=ed?countDirtyFields():0;
   let body='';
-  if(tab==='resumo') body=tabResumo(mc);
+  if(DRILL_CX) body=tabDrillCaixa(mc,DRILL_CX);
+  else if(tab==='resumo') body=tabResumo(mc);
   else if(tab==='caixas') body=tabCaixas(mc);
   else if(tab==='audit') body=tabAuditoria(mc);
   else if(tab==='sim') body=tabSimulador(mc);
@@ -1337,12 +1339,13 @@ function renderDetalhe(mcBase,tab){
     if(EDIT) EDIT.status=novo;
     renderDetalhe(atual, tab);
   };
-  el('dTabs').querySelectorAll('[data-tab]').forEach(t=>t.onclick=()=>renderDetalhe(mcBase,t.dataset.tab));
+  el('dTabs').querySelectorAll('[data-tab]').forEach(t=>t.onclick=()=>{ DRILL_CX=null; renderDetalhe(mcBase,t.dataset.tab); });
+  if(el('btnVoltarCx')) el('btnVoltarCx').onclick=()=>{ DRILL_CX=null; renderDetalhe(mcBase,DET_TAB); };
   const b=el('dBody');
-  if(tab==='sim') bindSim(mc);
+  if(tab==='sim'&&!DRILL_CX) bindSim(mc);
   bindEdit();
   b.querySelectorAll('[data-gocaixa]').forEach(e=>e.onclick=()=>{
-    FILTRO.mc=mcBase.id; DRILL=e.dataset.gocaixa; TAB='caixinhas'; voltar(); });
+    DRILL_CX=e.dataset.gocaixa; renderDetalhe(mcBase,DET_TAB); });
 }
 
 function tabCaixas(mc){
@@ -1362,6 +1365,52 @@ function tabCaixas(mc){
   <div class="${s.nao?'err':'ok-box'}" style="margin-top:16px">
     ${s.nao?`<b>${money(s.nao)}</b> em linhas que não encaixaram em nenhuma caixinha — abra "Não mapeado" para revisar o de-para.`
       :'Todas as linhas desta MC caíram numa caixinha do dashboard.'}</div>`;
+}
+
+/* linhas de UMA caixinha, dentro do detalhe da MC — mesma tabela editável da
+   aba do pilar, só que filtrada e reunindo pilares diferentes numa lista só.
+   Fica dentro do detalhe (não navega pra fora) pra não perder o modo edição. */
+function tabDrillCaixa(mc,cxKey){
+  const c=CAIXA_BY_K[cxKey], ed=editando(mc);
+  const linhas=linhasClassificadas(mc).filter(l=>l.caixa===cxKey);
+  const tot=linhas.reduce((a,l)=>a+l.total,0);
+  let h=`<button class="btn ghost sm" id="btnVoltarCx" style="margin-bottom:16px">← Voltar pras caixinhas</button>
+  <div class="sect-h" style="margin-bottom:16px">
+    <div><h1 style="font-size:19px;display:flex;align-items:center;gap:10px">
+      <span style="width:12px;height:12px;border-radius:4px;background:${CX_COLOR[cxKey]};display:inline-block"></span>${c.n}</h1>
+      <p class="muted" style="font-size:13px;margin-top:4px">
+        ${cxKey==='nao'?'Linhas que não encaixaram em nenhuma caixinha — revisar o de-para'
+          :`Coluna <b>${esc(c.col)}</b> do dashboard gerencial`}
+        · ${linhas.length} linha${linhas.length>1?'s':''}${ed?' · <b>modo edição</b>':''}</p></div>
+    <div class="sp"></div>
+    <div style="text-align:right"><div class="muted" style="font-size:10.5px;font-weight:600;letter-spacing:.8px;text-transform:uppercase">Custo total</div>
+      <div style="font-size:22px;font-weight:700;letter-spacing:-.8px">${money(tot)}</div></div>
+  </div>`;
+  if(!linhas.length) return h+`<div class="card"><div class="card-b muted">Nenhuma linha desta MC caiu nesta caixinha.
+    ${ed?' Adicione uma linha na aba do pilar e escolha esta caixinha no seletor.':''}</div></div>`;
+  h+=`<div class="card"><div class="card-b flush"><div class="tbl-wrap"><table>
+  <thead><tr><th>Pilar</th>${ed?'<th>Caixinha</th>':''}<th class="num">#</th><th>Categoria</th><th>Descrição</th><th>Detalhe</th>
+    <th class="num">Meses</th><th class="num">Qtde</th><th class="num">Vlr unit.</th>
+    <th class="num">Custo final</th><th class="num">% da caixinha</th>${ed?'<th></th>':''}</tr></thead>
+  <tbody>${linhas.map(l=>{
+    const b=`blocos.${l.pilarK}.rows.${l.idx-1}`;
+    return `<tr>
+    <td><span class="aba">${esc(l.aba)}</span></td>
+    ${ed?`<td style="min-width:150px">${edCaixaSelect(b+'.caixaOverride')}</td>`:''}
+    <td class="num mono muted">${l.idx}</td>
+    <td>${ed?edIn(b+'.cat','text'):(`<b>${esc(l.cat)||'<span class="zero">—</span>'}</b>`)}</td>
+    <td style="max-width:280px;min-width:${ed?'220px':'auto'}">${ed?edIn(b+'.desc','text'):(esc(l.desc)||'<span class="zero">—</span>')}</td>
+    <td class="muted" style="font-size:12px;max-width:190px">${ed?edIn(b+'.extra','text'):esc(l.extra)}</td>
+    <td class="num mono ${l.meses?'':'zero'}">${l.hm?(ed?edIn(b+'.meses','num'):(l.meses?qty(l.meses):'0')):'—'}</td>
+    <td class="num mono ${l.qtd?'':'zero'}">${ed?edIn(b+'.qtd','num'):qty(l.qtd)}</td>
+    <td class="num mono ${l.unit?'':'zero'}">${ed?edIn(b+'.unit','num'):money(l.unit)}</td>
+    <td class="num mono ${l.total?'':'zero'}">${ed?edIn(b+'.total','num'):`<b>${money(l.total)}</b>`}</td>
+    <td class="num mono muted">${tot?pct(l.total/tot):'—'}</td>
+    ${ed?`<td><button class="btn ghost sm" title="Remover linha" onclick="removerLinha('${l.pilarK}',${l.idx-1})" style="padding:5px 9px">✕</button></td>`:''}</tr>`;
+  }).join('')}</tbody>
+  <tfoot><tr><td colspan="${ed?9:8}">Total ${c.n}</td><td class="num mono">${money(tot)}</td><td></td>${ed?'<td></td>':''}</tr></tfoot>
+  </table></div></div></div>`;
+  return h;
 }
 
 function tabResumo(mc){
