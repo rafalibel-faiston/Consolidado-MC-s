@@ -232,7 +232,7 @@ html[data-theme=dark] .ok-box{background:#0d2f24;border-color:#174736;color:#34d
 
 /* DRE */
 .dre{display:flex;flex-direction:column;gap:2px}
-.dre-l{display:grid;grid-template-columns:24px 1fr 148px 86px;gap:12px;align-items:center;padding:11px 13px;border-radius:10px;font-size:13.5px}
+.dre-l{display:grid;grid-template-columns:24px 1fr 138px 76px 96px;gap:12px;align-items:center;padding:11px 13px;border-radius:10px;font-size:13.5px}
 .dre-l.head{background:var(--bg);font-weight:600}
 .dre-l.minus{color:#be123c}
 html[data-theme=dark] .dre-l.minus{color:#fb7185}
@@ -243,9 +243,12 @@ html[data-theme=dark] .dre-l.result2{background:#3a1440;border-color:#5b1f63;col
 .dre-l .sig{text-align:center;color:var(--mut)}
 .dre-l .vl{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
 .dre-l .pcv{text-align:right;color:var(--mut);font-size:12px}
-.dre-sub{padding-left:49px;font-size:12.5px;color:var(--mut);display:grid;grid-template-columns:1fr 148px 86px;gap:12px;padding-top:4px;padding-bottom:4px}
+.dre-l .vs{text-align:right;font-size:11.5px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.dre-sub{padding-left:49px;font-size:12.5px;color:var(--mut);display:grid;grid-template-columns:1fr 138px 76px 96px;gap:12px;padding-top:4px;padding-bottom:4px}
 .dre-sub .vl{text-align:right;font-variant-numeric:tabular-nums}
 .dre-sub .pcv{text-align:right}
+.dre-sub .vs{text-align:right;font-size:11px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.cx-vs{font-size:11px;color:var(--mut);margin-top:2px;font-variant-numeric:tabular-nums}
 
 /* pilares */
 .pilares{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:13px}
@@ -303,8 +306,8 @@ html[data-theme=dark] input.edin.dirty,html[data-theme=dark] select.edin.dirty{b
 @media(max-width:1080px){.g2{grid-template-columns:1fr}}
 @media(max-width:900px){
   main{padding:16px 14px 50px}.top{padding:16px 14px 0}
-  .dre-l{grid-template-columns:20px 1fr 108px}.dre-l .pcv{display:none}
-  .dre-sub{grid-template-columns:1fr 108px}.dre-sub .pcv{display:none}
+  .dre-l{grid-template-columns:20px 1fr 108px}.dre-l .pcv,.dre-l .vs{display:none}
+  .dre-sub{grid-template-columns:1fr 108px}.dre-sub .pcv,.dre-sub .vs{display:none}
   .search{width:150px}
 }
 </style>
@@ -512,6 +515,62 @@ function somaCaixas(mc){
   return s;
 }
 
+/* ============================================================
+   COMPARAÇÃO COM A CARTEIRA — números, não gráfico. Cada linha do
+   Resumo/DRE e cada caixinha do detalhe de uma MC mostra o quanto essa MC
+   está acima/abaixo da média das outras MCs importadas, no mesmo % usado
+   na linha (sobre a receita líquida, ou participação no custo).
+   ============================================================ */
+/* médias da carteira pras linhas do DRE — tudo em % sobre a receita líquida,
+   igual ao que já é mostrado em cada linha. exclui a própria MC da média. */
+function statsCarteira(excludeId){
+  const ms = MCS.filter(m=>m.id!==excludeId && m.receitaLiq);
+  const n = ms.length;
+  const media = fn => n ? ms.reduce((a,m)=>a+fn(m),0)/n : null;
+  const pilar = {}; PILARES.forEach(p=>pilar[p.k]=media(m=>(m.somas[p.k]||0)/m.receitaLiq));
+  const rSum={}, rCnt={};
+  ms.forEach(m=>(m.rateioVals||[]).forEach(r=>{
+    rSum[r.nome]=(rSum[r.nome]||0)+r.valor/m.receitaLiq; rCnt[r.nome]=(rCnt[r.nome]||0)+1;
+  }));
+  return {
+    n,
+    impostoPct: media(m=>m.impostos/m.receitaLiq),
+    custoPct: media(m=>m.custo/m.receitaLiq),
+    mcProjetoPct: media(m=>m.mcProjetoPct),
+    rateioPct: media(m=>m.rateioTot/m.receitaLiq),
+    mcDiretaPct: media(m=>m.mcDiretaPct),
+    pilar,
+    rateio: nome => rCnt[nome] ? rSum[nome]/rCnt[nome] : null,
+  };
+}
+/* mesma ideia, mas por caixinha — participação de cada caixinha no custo total */
+function statsCaixasCarteira(excludeId){
+  const ms = MCS.filter(m=>m.id!==excludeId && m.custo);
+  const n = ms.length;
+  const soma={}; CAIXAS.forEach(c=>soma[c.k]=0);
+  ms.forEach(m=>{ const s=somaCaixas(m); CAIXAS.forEach(c=>soma[c.k]+=(s[c.k]||0)/m.custo); });
+  const media={}; CAIXAS.forEach(c=>media[c.k]= n ? soma[c.k]/n : null);
+  return {n, media};
+}
+/* delta em p.p. com cor — só faz sentido quando "mais" é claramente melhor ou
+   pior (impostos/custo/rateios: mais é pior; DM/MC direta: mais é melhor).
+   pra participação de caixinha (composição, não mérito) usar vsNeutral. */
+function vsHTML(mcPct, avgPct, higherIsBetter){
+  if(avgPct==null || mcPct==null || !isFinite(mcPct)) return '<span class="muted">—</span>';
+  const d=mcPct-avgPct;
+  const good = higherIsBetter ? d>0.0005 : d<-0.0005;
+  const bad  = higherIsBetter ? d<-0.0005 : d>0.0005;
+  const cls = good?'delta-up':(bad?'delta-dn':'muted');
+  const arrow = d>0.0005?'▲':(d<-0.0005?'▼':'=');
+  return `<span class="${cls}">${arrow} ${d>=0?'+':''}${(d*100).toFixed(1)} p.p.</span>`;
+}
+function vsNeutral(mcPct, avgPct){
+  if(avgPct==null || mcPct==null || !isFinite(mcPct)) return '';
+  const d=mcPct-avgPct;
+  if(Math.abs(d)<0.0005) return 'na média da carteira';
+  return `${d>0?'+':''}${(d*100).toFixed(1)} p.p. vs média`;
+}
+
 /* linha do Dashboard Gerencial montada a partir da MC */
 function dashRow(mc){
   const meses = mc.mesesContrato || null;
@@ -625,6 +684,21 @@ function filtradas(){
   });
 }
 const rows = () => filtradas().map(dashRow);
+
+/* mesma lista que filtradas(), mas ignorando FILTRO.mc — dentro do detalhe
+   de uma MC esse filtro só serve pra "ir direto nela", não faz sentido
+   restringir a navegação anterior/próxima a uma lista de 1 item só */
+function filtradasParaNav(){
+  return MCS.filter(m=>{
+    if(FILTRO.cliente && m.cliente!==FILTRO.cliente) return false;
+    if(FILTRO.status && (m.status||'a_validar')!==FILTRO.status) return false;
+    if(FILTRO.busca){
+      const q=N(FILTRO.busca);
+      if(!(N(m.projeto).includes(q)||N(m.contrato).includes(q)||N(m.cliente).includes(q))) return false;
+    }
+    return true;
+  });
+}
 
 /* escala: total do contrato ou valor mensal */
 function sc(v,meses){
@@ -1290,8 +1364,18 @@ function renderDetalhe(mcBase,tab){
   else if(tab==='sim') body=tabSimulador(mc);
   else body=tabPilar(mc,tab);
 
+  const navOrd=sortRows(filtradasParaNav().map(dashRow));
+  const navIdx=navOrd.findIndex(r=>r.id===mcBase.id);
+  const navPrev=navIdx>0?navOrd[navIdx-1]:null, navNext=navIdx>=0&&navIdx<navOrd.length-1?navOrd[navIdx+1]:null;
+
   el('viewDetalhe').innerHTML=`
-    <button class="btn ghost sm" id="btnVoltar" style="margin-bottom:16px">← Voltar</button>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+      <button class="btn ghost sm" id="btnVoltar">← Voltar</button>
+      <div style="flex:1"></div>
+      ${navIdx>=0?`<span class="muted" style="font-size:12.5px">${navIdx+1} de ${navOrd.length}</span>`:''}
+      <button class="btn ghost sm" id="btnPrevMC" ${navPrev?'':'disabled style="opacity:.4;cursor:default"'} title="${navPrev?esc(navPrev.projeto):'Já é a primeira'}">◀ Anterior</button>
+      <button class="btn ghost sm" id="btnNextMC" ${navNext?'':'disabled style="opacity:.4;cursor:default"'} title="${navNext?esc(navNext.projeto):'Já é a última'}">Próxima ▶</button>
+    </div>
     <div class="sect-h" style="margin-bottom:18px">
       <div><h1 style="font-size:21px">${esc(mc.projeto)}</h1>
         <p class="muted" style="font-size:13px;margin-top:4px"><b>${esc(mc.contrato||'sem contrato')}</b> · ${esc(mc.cliente)}${mc.mesesContrato?` · ${mc.mesesContrato} meses`:''}${mc.inicio?` · ${esc(mc.inicio)}${mc.fim?' a '+esc(mc.fim):''}`:''}
@@ -1319,6 +1403,13 @@ function renderDetalhe(mcBase,tab){
     <div id="dBody">${body}</div>
     ${ed?editBar(mcBase,mc):''}`;
   el('btnVoltar').onclick=voltar;
+  const irPara=id=>{
+    if(EDIT && EDIT_DIRTY && !confirm('Você tem alterações não salvas nesta MC. Sair mesmo assim?')) return;
+    EDIT=null; EDIT_BASE=null; DRILL_CX=null; SIM=null;
+    openDetalhe(id);
+  };
+  if(navPrev) el('btnPrevMC').onclick=()=>irPara(navPrev.id);
+  if(navNext) el('btnNextMC').onclick=()=>irPara(navNext.id);
   el('btnRemover').onclick=async ()=>{ if(confirm('Remover esta MC do painel? O arquivo original não é afetado.')){
     try{ await fetch(`/api/mcs/${encodeURIComponent(mcBase.id)}`,{method:'DELETE',credentials:'include'}); }catch(e){}
     EDIT=null; EDIT_BASE=null; await loadMCs(); voltar(); } };
@@ -1352,15 +1443,17 @@ function tabCaixas(mc){
   const s=somaCaixas(mc);
   const tot=CAIXAS.reduce((a,c)=>a+s[c.k],0)||1;
   const ms=mc.mesesContrato;
+  const cst=statsCaixasCarteira(mc.id);
   const ord=[...CAIXAS].sort((a,b)=>s[b.k]-s[a.k]);
   return `<p class="sim-note">As 14 colunas de custo do dashboard gerencial montadas a partir desta MC.
-    Clique numa caixinha para abrir as linhas que a compõem.</p>
+    Clique numa caixinha para abrir as linhas que a compõem. ${cst.n?`Participação no custo comparada a ${cst.n} outra${cst.n>1?'s':''} MC${cst.n>1?'s':''} da carteira.`:''}</p>
   <div class="cx-grid">${ord.map(c=>`
     <div class="cx ${c.k==='nao'?'nao':''} ${s[c.k]?'':'off'}" data-gocaixa="${c.k}" style="--c:${CX_COLOR[c.k]}">
       <div class="cx-t"><span class="cx-n">${c.n}</span><span class="cx-p">${pct(s[c.k]/tot)}</span></div>
       <div class="cx-v">${money0(s[c.k])}</div>
       <div class="bar-track"><div class="bar-fill" style="width:${(s[c.k]/tot*100).toFixed(1)}%;background:${CX_COLOR[c.k]}"></div></div>
       <div class="cx-s">${ms?money0(s[c.k]/ms)+'/mês':'coluna '+esc(c.col)} →</div>
+      ${cst.n?`<div class="cx-vs">${vsNeutral(s[c.k]/tot,cst.media[c.k])}</div>`:''}
     </div>`).join('')}</div>
   <div class="${s.nao?'err':'ok-box'}" style="margin-top:16px">
     ${s.nao?`<b>${money(s.nao)}</b> em linhas que não encaixaram em nenhuma caixinha — abra "Não mapeado" para revisar o de-para.`
@@ -1414,23 +1507,25 @@ function tabDrillCaixa(mc,cxKey){
 }
 
 function tabResumo(mc){
-  const l=(sig,label,val,pc,cls)=>`<div class="dre-l ${cls||''}"><div class="sig">${sig}</div><div>${label}</div>
-    <div class="vl">${money(val)}</div><div class="pcv">${pc||''}</div></div>`;
-  const sub=(label,val,pc)=>`<div class="dre-sub"><div>${label}</div><div class="vl">${money(val)}</div><div class="pcv">${pc||''}</div></div>`;
+  const l=(sig,label,val,pc,cls,vs)=>`<div class="dre-l ${cls||''}"><div class="sig">${sig}</div><div>${label}</div>
+    <div class="vl">${money(val)}</div><div class="pcv">${pc||''}</div><div class="vs">${vs||''}</div></div>`;
+  const sub=(label,val,pc,vs)=>`<div class="dre-sub"><div>${label}</div><div class="vl">${money(val)}</div><div class="pcv">${pc||''}</div><div class="vs">${vs||''}</div></div>`;
   const rl=mc.receitaLiq||1,ct=mc.custo||1;
+  const st=statsCarteira(mc.id);
+  const vsN = st.n ? `comparado a ${st.n} outra${st.n>1?'s':''} MC${st.n>1?'s':''} da carteira` : 'sem outras MCs pra comparar ainda';
   let h=editando(mc)?cardEdicao(mc):'';
   h+=`<div class="g2"><div class="card">
-    <div class="card-h"><h3>Demonstrativo do projeto</h3><p>percentuais sobre a receita líquida</p></div>
+    <div class="card-h"><h3>Demonstrativo do projeto</h3><p>percentuais sobre a receita líquida · ${vsN}</p></div>
     <div class="card-b"><div class="dre">
       ${l('','1. Receita bruta',mc.receita,'','head')}
-      ${l('−',`2. Impostos (${pct2(mc.impostoFator)})`,mc.impostos,pct(mc.impostos/rl),'minus')}
+      ${l('−',`2. Impostos (${pct2(mc.impostoFator)})`,mc.impostos,pct(mc.impostos/rl),'minus',vsHTML(mc.impostos/rl,st.impostoPct,false))}
       ${l('=','Receita líquida / net revenue',mc.receitaLiq,'100,0%','head')}
-      ${l('−','3. Custos diretos',mc.custo,pct(mc.custo/rl),'minus')}`;
-  PILARES.forEach(p=>h+=sub(p.n,mc.somas[p.k],pct(mc.somas[p.k]/rl)));
-  h+=`${l('=','4. Margem de contribuição do projeto (DM)',mc.mcProjeto,pct(mc.mcProjetoPct),'result')}
-      ${l('−','5. Rateios',mc.rateioTot,pct(mc.rateioTot/rl),'minus')}`;
-  (mc.rateioVals||[]).forEach(r=>h+=sub(`${r.nome} (${pct2(r.p)})`,r.valor,pct(r.valor/rl)));
-  h+=`${l('=','6. Margem de contribuição direta Faiston',mc.mcDireta,pct(mc.mcDiretaPct),'result2')}
+      ${l('−','3. Custos diretos',mc.custo,pct(mc.custo/rl),'minus',vsHTML(mc.custo/rl,st.custoPct,false))}`;
+  PILARES.forEach(p=>h+=sub(p.n,mc.somas[p.k],pct(mc.somas[p.k]/rl),vsHTML((mc.somas[p.k]||0)/rl,st.pilar[p.k],false)));
+  h+=`${l('=','4. Margem de contribuição do projeto (DM)',mc.mcProjeto,pct(mc.mcProjetoPct),'result',vsHTML(mc.mcProjetoPct,st.mcProjetoPct,true))}
+      ${l('−','5. Rateios',mc.rateioTot,pct(mc.rateioTot/rl),'minus',vsHTML(mc.rateioTot/rl,st.rateioPct,false))}`;
+  (mc.rateioVals||[]).forEach(r=>h+=sub(`${r.nome} (${pct2(r.p)})`,r.valor,pct(r.valor/rl),vsHTML(r.valor/rl,st.rateio(r.nome),false)));
+  h+=`${l('=','6. Margem de contribuição direta Faiston',mc.mcDireta,pct(mc.mcDiretaPct),'result2',vsHTML(mc.mcDiretaPct,st.mcDiretaPct,true))}
     </div></div></div>
     <div><div class="card" style="margin-bottom:16px">
       <div class="card-h"><h3>Peso de cada pilar no custo</h3><p>as 4 abas de levantamento</p></div>
