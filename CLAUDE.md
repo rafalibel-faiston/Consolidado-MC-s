@@ -261,6 +261,25 @@ mostra quantos campos mudaram no total (em qualquer aba, não só a que está na
 - Reimportar a mesma planilha sobrescreve a edição inteira, incluindo `caixaOverride`
   (é upsert por id) — a planilha continua sendo a fonte, a edição é ajuste por cima.
 
+### Detalhe de uma MC — comparação com a carteira e navegação
+
+Rafael pediu (19/08/2026) pra focar na visão individual de uma MC, não só na
+carteira consolidada — e prefere número a gráfico. Duas coisas no detalhe:
+
+- **Comparação numérica com a carteira**, sem gráfico nenhum. Na aba Resumo/DRE,
+  cada linha (impostos, custo, cada pilar, DM, rateios, cada rateio, MC direta)
+  mostra o delta em pontos percentuais contra a média das outras MCs importadas
+  (`statsCarteira()`, exclui a própria MC da média). Custo/impostos/rateios: mais
+  que a média é ruim (vermelho). DM/MC direta: mais que a média é bom (verde).
+  Na aba Caixinhas, cada caixinha mostra o delta de participação no custo total
+  contra a média da carteira (`statsCaixasCarteira()`) — sem cor de bem/mal, é
+  composição, não mérito (`vsNeutral()`). Com só uma MC no painel não tem com o
+  que comparar — os dois casos mostram isso em vez de inventar um número.
+- **Navegação ◀ anterior / próxima ▶** no topo do detalhe, com posição ("2 de 3").
+  Usa a mesma ordenação/filtro da tabela Gerencial (`sortRows`), mas ignora o
+  filtro de MC específica (`filtradasParaNav()`) — senão a lista de navegação
+  ficaria com 1 item só quando você chega no detalhe filtrando por uma MC.
+
 ### Classificação da MC (status)
 
 Espelha as pastas que a Bruna usa no OneDrive (`01-CONTRATOS ATIVOS`,
@@ -319,6 +338,9 @@ Alembic por enquanto, é cedo pro projeto pra valer a complexidade de migrations
   18/08/2026): simular e manter a alteração sem precisar mexer na planilha
 - Header enxuto: só a marca Faiston. O selo "OPS" e o rótulo "Margem de Contribuição"
   do topo saíram a pedido do Rafael (18/08/2026) — o H1 da página já diz isso
+- Foco no detalhe individual de uma MC, não só na carteira consolidada (Rafael,
+  19/08/2026) — comparação numérica com a média da carteira e navegação entre
+  MCs, **número em vez de gráfico** (preferência explícita dele)
 - **Sem autenticação** (revertido em 10/08/2026 — tinha senha única antes). Painel
   público pra quem tiver a URL. Decisão explícita do Rafael, sabendo do risco pro
   dado de margem/custo — não reabrir sem ele pedir
